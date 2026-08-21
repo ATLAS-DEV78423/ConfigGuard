@@ -16,7 +16,6 @@ import tomli_w
 from rice.core.errors import ConfigError
 from rice.core.fs import Filesystem
 
-DEFAULT_CONFIG_PATH = "~/.config/rice/config.toml"
 DEFAULT_DATA_DIR = "~/.local/share/rice"
 KNOWN_APPS = ("hyprland", "waybar", "kitty", "wofi", "extra")
 
@@ -33,7 +32,7 @@ class RiceConfig:
 def config_path(home: Path | None = None) -> Path:
     """Config file location; injectable home keeps tests off the real one."""
     if home is None:
-        return Path(DEFAULT_CONFIG_PATH).expanduser()
+        return Path.home() / ".config" / "rice" / "config.toml"
     return home / ".config" / "rice" / "config.toml"
 
 

@@ -104,7 +104,7 @@ def test_snapshot_pin_marks_manifest(initialized: Path) -> None:
 
 def test_snapshots_show_defaults_latest_json(initialized: Path) -> None:
     run("snapshot")
-    result = run("snapshots", "show", "--json")
+    result = run("--json", "snapshots", "show")
     manifest = json.loads(result.output)
     assert manifest["files"][0]["rel_path"].startswith(".config/")
 

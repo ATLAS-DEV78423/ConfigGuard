@@ -171,7 +171,7 @@ def init(ctx: typer.Context) -> None:
     if extra:
         protected["extra"] = extra
 
-    cfg = RiceConfig(data_dir=Path("~/.local/share/rice").expanduser(), protected=protected)
+    cfg = RiceConfig(data_dir=_home() / ".local/share/rice", protected=protected)
     path = save_config(cfg, _fs(), home=_home())
     typer.echo(f"Saved {path}")
     if c.json_out:

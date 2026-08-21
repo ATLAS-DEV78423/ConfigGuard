@@ -38,6 +38,9 @@ from rice.pkgmanagers.apt import AptPackageManager, looks_like_sudo_failure
 
 log = logging.getLogger("rice.update")
 
+# Test seam: CLI tests point this at a scripted FakeCommandRunner script.
+_TEST_SCRIPT = None
+
 
 class _Interrupted(SystemExit):
     """Raised by signal handlers to unwind cleanly."""

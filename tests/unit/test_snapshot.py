@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from rice.core import snapshot as snapshot_mod
 from rice.core.errors import ScopeViolation, SnapshotError
 from rice.core.fs import Filesystem
 from rice.core.snapshot import RETENTION_KEEP, SnapshotStore
@@ -132,8 +133,12 @@ def test_list_get_latest_ordering(env: tuple[SnapshotStore, Path, Path]) -> None
         store.get("nope")
 
 
-def test_prune_keeps_pinned_recent_and_last_ten(env: tuple[SnapshotStore, Path, Path]) -> None:
+def test_prune_keeps_pinned_recent_and_last_ten(
+    env: tuple[SnapshotStore, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
     store, fs, home = env
+    # Shrink the retention window so "old" is reachable in a fast test.
+    monkeypatch.setattr(snapshot_mod, "RETENTION_DAYS", 0)
     pinned = store.create(protected(home), pinned=True)
     for _ in range(RETENTION_KEEP + 3):
         store.create(protected(home))
@@ -143,6 +148,17 @@ def test_prune_keeps_pinned_recent_and_last_ten(env: tuple[SnapshotStore, Path, 
     assert len(doomed) == 3  # exactly the overflow beyond last-10
     for sid in doomed:
         assert sid not in remaining
+
+
+def test_prune_keeps_everything_within_retention_window(
+    env: tuple[SnapshotStore, Path, Path],
+) -> None:
+    """Spec policy is a UNION: last-10 OR last-30-days OR pinned. Fresh
+    snapshots are all inside the 30-day window, so nothing gets deleted."""
+    store, fs, home = env
+    for _ in range(RETENTION_KEEP + 5):
+        store.create(protected(home))
+    assert store.prune() == []
 
 
 def test_manifest_json_shape(env: tuple[SnapshotStore, Path, Path]) -> None:

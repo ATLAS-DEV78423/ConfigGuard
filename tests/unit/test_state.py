@@ -32,13 +32,13 @@ def test_happy_chain_persists_every_step(tmp_path: Path, journal: TransactionJou
         TS.UPDATED,
         TS.RECONCILING,
         TS.VALIDATING,
-        TS.COMMITTED,
     ]
     for state in chain:
         journal.set_state(state)
         on_disk = read_journal(data, "txn-1")
         assert on_disk["state"] == state.value
-    # COMMITTED journals are deleted (spec §11).
+    # COMMITTED journals are deleted (spec §11); mark_finished_ok owns that.
+    journal.mark_finished_ok()
     assert journal.load() is None
     assert not (data / "transactions" / "txn-1.json").exists()
 
