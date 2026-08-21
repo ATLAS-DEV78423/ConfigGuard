@@ -1,0 +1,7 @@
+* {
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 13px;
+}
+window#waybar {
+    background: #1a1b26;
+}

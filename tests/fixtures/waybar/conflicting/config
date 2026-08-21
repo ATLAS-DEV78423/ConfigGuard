@@ -1,0 +1,12 @@
+{
+    // conflicting variant with comment (jsonc)
+    "layer": "bottom",
+    "modules-left": ["hyprland/workspaces", "tray"],
+    "modules-right": ["clock"],
+    "clock": {
+        "format": "{:%H:%M}"
+    },
+    "cpu": {
+        "format": "{}%"
+    }
+}
