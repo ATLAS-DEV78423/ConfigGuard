@@ -71,7 +71,8 @@ def test_update_success_via_cli(rice_home: Path, monkeypatch: pytest.MonkeyPatch
         "_TEST_SCRIPT",
         apt_script(on_upgrade=lambda: conf.write_text("monitor=@165\n")),
     )
-    result = runner.invoke(app, ["update"], catch_exceptions=False)
+    # Interactive update; answer the conflict prompt with [1] keep mine.
+    result = runner.invoke(app, ["update"], input="1\n", catch_exceptions=False)
     assert result.exit_code == 0
     assert "@144" in conf.read_text()  # reconciled back to user's version
 
@@ -177,7 +178,9 @@ def test_doctor_detects_and_fixes_interrupted_transaction(
     conf.write_text("garbage\n")
 
     report = runner.invoke(app, ["--json", "doctor"], catch_exceptions=False)
-    payload = json.loads(report.output)
+    # CliRunner mixes stderr into output; doctor exits 7 (unresolved checks)
+    # after printing the JSON, so decode only the first JSON document.
+    payload, _ = json.JSONDecoder().raw_decode(report.output)
     pending_check = next(c for c in payload["checks"] if c["name"] == "pending-transaction")
     assert pending_check["ok"] is False
     assert report.exit_code == 7  # unresolved problems -> nonzero
