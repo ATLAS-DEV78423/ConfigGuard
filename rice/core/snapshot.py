@@ -101,11 +101,6 @@ class SnapshotStore:
         require_within(self.snapshots_root() / snap_id, [self.snapshots_root()])
         return self.snapshots_root() / snap_id
 
-    def exists(self, snap_id: str) -> bool:
-        return (self.snapshots_root() / snap_id / "manifest.json").exists()
-
-    # -- create -------------------------------------------------------------
-
     def create(
         self,
         protected: list[Path],

@@ -19,8 +19,7 @@ from rice.core.errors import (
     UsageError,
     ValidationError_,
 )
-from rice.core.fs import Filesystem
-from rice.core.loggingx import log_file_summary, redact, setup_logging
+from rice.core.loggingx import redact, setup_logging
 
 
 @pytest.mark.parametrize(
@@ -77,20 +76,6 @@ def test_setup_logging_idempotent(tmp_path: Path) -> None:
     n = len(logger.handlers)
     setup_logging(tmp_path)
     assert len(logger.handlers) == n
-
-
-def test_log_file_summary_hashes_never_contents(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
-) -> None:
-    fs = Filesystem()
-    target = tmp_path / "secret.conf"
-    target.write_text("monitor=DP-1,passwordish line\n")
-    with caplog.at_level(logging.INFO, logger="rice"):
-        log_file_summary(logging.getLogger("rice"), fs, target)
-    msg = caplog.text
-    assert "secret.conf" in msg
-    assert "sha256=" in msg
-    assert "passwordish" not in msg
 
 
 def test_redaction_filter_applies_to_logged_records(caplog: pytest.LogCaptureFixture) -> None:

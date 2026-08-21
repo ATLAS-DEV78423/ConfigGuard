@@ -94,10 +94,11 @@ def test_resolve_abort_raises_conflict_aborted_and_records(env: tuple) -> None:
     assert any(a.get("action") == "abort" for a in seen)
 
 
-def test_resolution_actions_metadata_only(env: tuple) -> None:
+def test_decision_records_metadata_only(env: tuple) -> None:
     """Decision records carry paths/actions — never config contents (SR-002)."""
     rec, store, fs, home, sid = env
     (home / ".config/hypr/hyprland.conf").write_text("SECRET-LIKE CONTENT monitor=@165\n")
-    resolution = rec.resolve(sid, lambda _f: Action.KEEP_MINE)
-    blob = str(resolution.actions)
+    seen: list[dict] = []
+    rec.resolve(sid, lambda _f: Action.KEEP_MINE, on_decision=seen.append)
+    blob = str(seen)
     assert "SECRET-LIKE" not in blob

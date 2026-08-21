@@ -14,7 +14,6 @@ import os
 import signal
 from collections.abc import Callable
 from contextlib import contextmanager
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -42,8 +41,9 @@ log = logging.getLogger("rice.update")
 _TEST_SCRIPT = None
 
 
-class _Interrupted(SystemExit):
-    """Raised by signal handlers to unwind cleanly."""
+def _keep_mine(_finding: Finding) -> Action:
+    """Conservative default resolution (spec §18): preserve the user's file."""
+    return Action.KEEP_MINE
 
 
 # ---- locking (FR-030) ---------------------------------------------------------
@@ -92,7 +92,7 @@ def signal_safety():  # type: ignore[no-untyped-def]
 
     def handler(signum: int, _frame: object) -> None:
         log.warning("received signal %d; unwinding cleanly", signum)
-        raise _Interrupted(130)
+        raise SystemExit(130)
 
     installed: list[tuple[int, object]] = []
     for sig_name in ("SIGINT", "SIGTERM", "SIGHUP"):
@@ -117,19 +117,14 @@ def signal_safety():  # type: ignore[no-untyped-def]
 # ---- preflight -----------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class PreflightReport:
-    ok: bool
-    problems: list[str]
-
-
 def preflight(
     det: Detector,
     cfg: RiceConfig | None,
     pm_present: bool,
     *,
     need_pm: bool = True,
-) -> PreflightReport:
+) -> list[str]:
+    """Return problems; empty list == good to proceed."""
     problems: list[str] = []
     detection = det.system()
     if not detection.supported:
@@ -147,7 +142,7 @@ def preflight(
             log.warning("%d protected path(s) missing and will be skipped", len(missing))
     if need_pm and not pm_present:
         problems.append("apt not found on this system")
-    return PreflightReport(ok=not problems, problems=problems)
+    return problems
 
 
 # ---- recovery (FR-004, idempotent) ----------------------------------------------
@@ -208,9 +203,9 @@ def run_protected_update(
     txn_id = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
 
     if dry_run:
-        report = preflight(det, cfg, AptPackageManager.detect(runner))
-        if not report.ok:
-            for p in report.problems:
+        problems = preflight(det, cfg, AptPackageManager.detect(runner))
+        if problems:
+            for p in problems:
                 log.error("preflight: %s", p)
             return 3
         manifest = store.create(protected_paths(cfg), desktop=det.system().desktop, dry_run=True)
@@ -220,10 +215,10 @@ def run_protected_update(
     with signal_safety(), TransactionLock(cfg.data_dir):
         journal.begin(txn_id)  # PREPARING
 
-        report = preflight(det, cfg, AptPackageManager.detect(runner))
-        if not report.ok:
+        problems = preflight(det, cfg, AptPackageManager.detect(runner))
+        if problems:
             journal.clear()
-            raise ConfigError("; ".join(report.problems))
+            raise ConfigError("; ".join(problems))
 
         manifest = store.create(protected_paths(cfg), desktop=det.system().desktop)
         journal.set_state(TransactionState.SNAPSHOTTED)
@@ -249,13 +244,8 @@ def run_protected_update(
         journal.set_state(TransactionState.RECONCILING)
         reconciler = Reconciler(fs, store)
 
-        def decider(finding: Finding) -> Action:
-            if decide is not None:
-                return decide(finding)
-            return Action.KEEP_MINE  # conservative default (spec §18)
-
         try:
-            resolution = reconciler.resolve(manifest.timestamp, decider, on_decision)
+            resolution = reconciler.resolve(manifest.timestamp, decide or _keep_mine, on_decision)
         except ConflictAborted as aborted:
             journal.record("decisions", {"path": aborted.finding.entry.rel_path, "action": "abort"})
             journal.set_state(TransactionState.CONFLICT)
@@ -274,7 +264,7 @@ def run_protected_update(
         journal.set_state(TransactionState.VALIDATING)
         validator = Validator(fs, runner, home)
         validation = validator.validate_all(list(cfg.protected.keys()))
-        failures = Validator.failures(validation)
+        failures = [r for r in validation if r.ok is False]
         if failures:
             names = ", ".join(r.app for r in failures)
             do_rollback = True

@@ -6,9 +6,10 @@ import subprocess
 from typing import Any
 
 import pytest
+from support import FakeCommandRunner
 
 from rice.core.errors import RiceError
-from rice.core.runner import FakeCommandRunner, RunResult
+from rice.core.runner import RunResult
 
 
 def test_fake_records_calls_and_defaults_ok() -> None:

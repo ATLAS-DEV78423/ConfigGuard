@@ -20,8 +20,6 @@ from pathlib import Path
 
 from rice.core.errors import ScopeViolation
 
-_CHUNK = 64 * 1024
-
 
 @dataclass(frozen=True)
 class FileMeta:
@@ -103,11 +101,8 @@ class Filesystem:
         return FileMeta.from_stat(os.lstat(path), path)
 
     def sha256(self, path: Path) -> str:
-        h = hashlib.sha256()
         with open(path, "rb") as fh:
-            while chunk := fh.read(_CHUNK):
-                h.update(chunk)
-        return h.hexdigest()
+            return hashlib.file_digest(fh, "sha256").hexdigest()
 
     def walk_files(self, root: Path) -> Iterator[Path]:
         """Yield every entry under root recursively. Symlinked dirs are yielded
@@ -156,13 +151,6 @@ class Filesystem:
         """Copy content + mode + mtime. A symlink src copies the LINK itself."""
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, dst, follow_symlinks=False)
-
-    def move(self, src: Path, dst: Path) -> None:
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        if dst.exists() and dst.is_dir() and not dst.is_symlink():
-            shutil.move(str(src), str(dst / src.name))
-        else:
-            os.replace(src, dst)
 
     def remove(self, path: Path) -> None:
         """Remove a file, symlink, or directory tree. Caller scope-checks FIRST."""

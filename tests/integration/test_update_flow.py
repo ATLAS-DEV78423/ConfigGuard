@@ -12,6 +12,7 @@ from datetime import UTC
 from pathlib import Path
 
 import pytest
+from support import FakeCommandRunner
 
 from rice.core.config import RiceConfig
 from rice.core.errors import (
@@ -23,7 +24,7 @@ from rice.core.errors import (
 )
 from rice.core.fs import Filesystem
 from rice.core.reconciler import Action
-from rice.core.runner import FakeCommandRunner, RunResult
+from rice.core.runner import RunResult
 from rice.core.state import TransactionJournal
 from rice.core.updater import TransactionLock, recover_pending, run_protected_update
 

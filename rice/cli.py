@@ -21,6 +21,7 @@ from rice.core.config import RiceConfig, load_config, protected_paths, save_conf
 from rice.core.detector import Detector
 from rice.core.errors import RecoveryError, RiceError, UsageError, ValidationError_
 from rice.core.fs import Filesystem
+from rice.core.loggingx import setup_logging
 from rice.core.runner import CommandRunner
 from rice.core.snapshot import SnapshotStore
 from rice.core.state import TransactionJournal
@@ -95,6 +96,13 @@ def main(
         non_interactive=non_interactive,
         dry_run=dry_run,
     )
+    # Wire logging (spec §25). Config's data_dir when present, else the
+    # default location; without a config there is simply no file handler.
+    try:
+        data_dir = load_config(_fs(), home=_home()).data_dir
+    except RiceError:
+        data_dir = _home() / ".local/share/rice"
+    setup_logging(data_dir, verbose=verbose, quiet=quiet)
 
 
 # ---- bootstrap helpers -------------------------------------------------------
@@ -541,11 +549,6 @@ def completion(
         raise UsageError(f"unknown shell '{shell}': expected bash, zsh, or fish")
     typer.echo(f"# rice completion for {shell}")
     typer.echo(snippet)
-
-
-def entry() -> None:
-    """Console-script entry point."""
-    app()
 
 
 if __name__ == "__main__":

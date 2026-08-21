@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from support import FakeCommandRunner
+
 from rice.core.fs import Filesystem
-from rice.core.runner import FakeCommandRunner, RunResult
+from rice.core.runner import RunResult
 from rice.integrators import INTEGRATOR_CLASSES
 from rice.integrators.hyprland import HyprlandIntegrator
 from rice.integrators.kitty import KittyIntegrator

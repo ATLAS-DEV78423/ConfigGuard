@@ -8,12 +8,13 @@ from datetime import UTC
 from pathlib import Path
 
 import pytest
+from support import FakeCommandRunner
 from typer.testing import CliRunner
 
 import rice.cli as cli_mod
 import rice.core.updater as updater_mod
 from rice.cli import app
-from rice.core.runner import FakeCommandRunner, RunResult
+from rice.core.runner import RunResult
 
 runner = CliRunner()
 

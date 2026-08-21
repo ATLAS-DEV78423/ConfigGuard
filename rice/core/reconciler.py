@@ -15,7 +15,7 @@ from __future__ import annotations
 import difflib
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 from rice.core.fs import Filesystem
@@ -51,7 +51,6 @@ class Resolution:
     unchanged: int = 0
     restored_missing: int = 0
     conflicts_resolved: int = 0
-    actions: list[dict[str, str]] = field(default_factory=list)
 
 
 Decider = Callable[[Finding], Action]
@@ -153,7 +152,6 @@ class Reconciler:
                     "decision %s: %s (%s)", entry.rel_path, record["action"], finding.verdict.value
                 )
 
-            resolution.actions.append(record)
             if on_decision:
                 on_decision(record)
         return resolution

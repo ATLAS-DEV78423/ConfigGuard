@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from rice.core.runner import FakeCommandRunner, RunResult
+from support import FakeCommandRunner
+
+from rice.core.runner import RunResult
 from rice.pkgmanagers.apt import AptPackageManager, looks_like_sudo_failure
 from rice.pkgmanagers.base import UpdateResult
 

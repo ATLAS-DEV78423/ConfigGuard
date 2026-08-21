@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from support import FakeCommandRunner
+
 from rice.core.detector import Detection, Detector, parse_os_release
 from rice.core.fs import Filesystem
-from rice.core.runner import FakeCommandRunner
 
 UBUNTU_RELEASE = b'NAME="Ubuntu"\nID=ubuntu\nVERSION_ID="24.04"\n'
 DEBIAN_RELEASE = b'ID=debian\nVERSION_ID="13"\n'

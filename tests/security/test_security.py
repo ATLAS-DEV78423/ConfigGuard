@@ -135,6 +135,9 @@ def test_sr002_reconcile_records_never_carry_config_contents(tmp_path: Path) -> 
 
     from rice.core.reconciler import Action, Reconciler
 
-    resolution = Reconciler(fs, store).resolve(snap.timestamp, lambda _f: Action.KEEP_MINE)
-    blob = repr(resolution.actions)
+    seen: list[dict] = []
+    Reconciler(fs, store).resolve(
+        snap.timestamp, lambda _f: Action.KEEP_MINE, on_decision=seen.append
+    )
+    blob = repr(seen)
     assert "hunter2" not in blob and "monitor" not in blob

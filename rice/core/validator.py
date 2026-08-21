@@ -25,7 +25,3 @@ class Validator:
             if integ.name in apps and integ.detect():
                 results.append(integ.validate(self._fs))
         return results
-
-    @staticmethod
-    def failures(results: list[ValidationResult]) -> list[ValidationResult]:
-        return [r for r in results if r.ok is False]

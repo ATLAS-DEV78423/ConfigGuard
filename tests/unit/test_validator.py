@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from support import FakeCommandRunner
+
 from rice.core.fs import Filesystem
-from rice.core.runner import FakeCommandRunner, RunResult
+from rice.core.runner import RunResult
 from rice.core.validator import Validator
 
 
@@ -35,14 +37,14 @@ def test_waybar_valid_json_ok_invalid_json_fails(tmp_path: Path) -> None:
     (wb / "config").write_text("{not json")
     bad = Validator(Filesystem(), FakeCommandRunner(), home).validate_all(["waybar"])
     assert bad[0].ok is False
-    assert Validator.failures(bad) == bad
+    assert [r for r in bad if r.ok is False] == bad
 
 
 def test_failures_filters_manual_checks_out(tmp_path: Path) -> None:
     v = make_validator(tmp_path, FakeCommandRunner(), ["hyprland", "kitty"])
     results = v.validate_all(["hyprland", "kitty"])
     # default fake runner: probes succeed -> hyprland ok=True; kitty manual (None)
-    assert Validator.failures(results) == []
+    assert [r for r in results if r.ok is False] == []
     assert any(r.ok is None for r in results)
 
 
@@ -53,5 +55,5 @@ def test_hyprland_reload_failure_counts_as_failure(tmp_path: Path) -> None:
         return RunResult(args=["hyprctl", "reload"], returncode=1, stderr="syntax error")
 
     v = make_validator(tmp_path, FakeCommandRunner(script=script), ["hyprland"])
-    failures = Validator.failures(v.validate_all(["hyprland"]))
+    failures = [r for r in v.validate_all(["hyprland"]) if r.ok is False]
     assert len(failures) == 1 and failures[0].app == "hyprland"
