@@ -32,7 +32,8 @@ rice restore              # restore latest snapshot manually
 `restore [SNAPSHOT]`, `doctor [--fix]`, `snapshots list|show|delete|prune`,
 `completion bash|zsh|fish`, `version`.
 
-Global flags: `--version`, `-v/--verbose`, `--no-color`, `--quiet`, `--json`,
+Global flags (place immediately after `rice`): `--version`, `-v/--verbose`,
+`--no-color`, `--quiet`, `--json`,
 `--non-interactive`, `--dry-run`.
 
 Exit codes: 0 success · 1 general · 2 usage · 3 config · 4 snapshot ·

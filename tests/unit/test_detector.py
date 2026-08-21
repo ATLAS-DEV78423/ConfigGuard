@@ -36,19 +36,19 @@ def test_parse_os_release_strips_quotes() -> None:
     assert out["ID"] == "ubuntu" and out["VERSION_ID"] == "24.04"
 
 
-def test_ubuntu_supported() -> None:
-    det = make_detector(Path("/t"), UBUNTU_RELEASE)
+def test_ubuntu_supported(tmp_path: Path) -> None:
+    det = make_detector(tmp_path, UBUNTU_RELEASE)
     d = det.system()
     assert isinstance(d, Detection)
     assert d.distro_id == "ubuntu" and d.supported
 
 
-def test_debian_supported() -> None:
-    assert make_detector(Path("/t"), DEBIAN_RELEASE).system().supported
+def test_debian_supported(tmp_path: Path) -> None:
+    assert make_detector(tmp_path, DEBIAN_RELEASE).system().supported
 
 
-def test_arch_unsupported() -> None:
-    assert not make_detector(Path("/t"), ARCH_RELEASE).system().supported
+def test_arch_unsupported(tmp_path: Path) -> None:
+    assert not make_detector(tmp_path, ARCH_RELEASE).system().supported
 
 
 def test_missing_release_is_unsupported_not_crash(tmp_path: Path) -> None:

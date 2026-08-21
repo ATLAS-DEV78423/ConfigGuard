@@ -20,10 +20,10 @@ Two snapshots taken in the same second get a `-N` suffix; ids stay unique.
 
 ```bash
 rice snapshot [--pin]          # capture now (honors --dry-run)
-rice snapshots list [--json]   # id, file count, pinned flag
+rice --json snapshots list      # id, file count, pinned flag (global flags go first)
 rice snapshots show [ID]       # manifest details (default: latest)
 rice snapshots delete ID       # asks confirmation; --force / --non-interactive needs it
-rice snapshots prune [--dry-run]
+rice --dry-run snapshots prune
 ```
 
 `restore`, `diff`, and `snapshots show` default to the latest snapshot when no

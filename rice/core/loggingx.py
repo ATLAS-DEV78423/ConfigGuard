@@ -16,21 +16,31 @@ from pathlib import Path
 from rice.core.fs import Filesystem
 
 _SECRET_RE = re.compile(
-    r"(?i)\b(password|passwd|token|secret|api[_-]?key|auth|credential)s?\b(\s*[=:]\s*)(\S+)"
+    r"(?i)(?<![A-Za-z])(password|passwd|token|secret|api[_-]?key|auth|credential)s?"
+    r"(\s*[=:]\s*)(\S+)"
 )
 
 
 def redact(text: str) -> str:
-    """Mask values assigned to secret-looking keys. Keeps keys for debuggability."""
+    """Mask values assigned to secret-looking keys. Keeps keys for debuggability.
+
+    The lookbehind (not \\b) lets MY_TOKEN= match while keeping 'author=' safe.
+    """
     return _SECRET_RE.sub(lambda m: f"{m.group(1)}{m.group(2)}<redacted>", text)
 
 
 class _RedactFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
+        # Interpolate BEFORE redacting: redacting a "%s" format string would
+        # swallow placeholders and break msg % args downstream.
+        if record.args:
+            try:
+                record.msg = record.getMessage()
+            except Exception:
+                pass
+            record.args = None
         if isinstance(record.msg, str):
             record.msg = redact(record.msg)
-        if record.args:
-            record.args = tuple(redact(a) if isinstance(a, str) else a for a in record.args)
         return True
 
 

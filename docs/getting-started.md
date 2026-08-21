@@ -12,10 +12,11 @@ Additional paths to protect (comma-separated, blank=none):
 Saved /home/you/.config/rice/config.toml
 ```
 
-Non-interactive: accept everything detected.
+Non-interactive: accept everything detected. (Global flags like
+`--non-interactive` go immediately after `rice`, before the command.)
 
 ```bash
-rice init --non-interactive
+rice --non-interactive init
 ```
 
 ## 2. Check status

@@ -227,6 +227,7 @@ def store_journal_setup(fs: Filesystem, cfg: RiceConfig, home: Path) -> None:
     journal = TransactionJournal(fs, cfg.data_dir)
     rec = journal.begin(f"{datetime.now(UTC):%Y%m%d-%H%M%S}")
     journal.record("snapshot_id", snap.timestamp)
+    journal.set_state(TransactionState.SNAPSHOTTED)  # legal chain: PREPARING -> SNAPSHOTTED
     journal.set_state(TransactionState.UPDATING)
     del rec
 

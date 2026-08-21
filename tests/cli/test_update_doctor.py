@@ -35,7 +35,7 @@ def rice_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         return FakeCommandRunner(script=script)
 
     monkeypatch.setattr(cli_mod, "CommandRunner", fake_runner_factory)
-    assert runner.invoke(app, ["init", "--non-interactive"], catch_exceptions=False).exit_code == 0
+    assert runner.invoke(app, ["--non-interactive", "init"], catch_exceptions=False).exit_code == 0
     return home
 
 
@@ -121,7 +121,7 @@ def test_diff_reports_changes_json(rice_home: Path, monkeypatch: pytest.MonkeyPa
     conf = rice_home / ".config/hypr/hyprland.conf"
     conf.write_text("monitor=DP-1@165\n")
 
-    result = runner.invoke(app, ["diff", "--json"], catch_exceptions=False)
+    result = runner.invoke(app, ["--json", "diff"], catch_exceptions=False)
     payload = json.loads(result.output)
     assert payload["findings"] == [{"path": ".config/hypr/hyprland.conf", "verdict": "changed"}]
 
@@ -162,20 +162,21 @@ def test_doctor_detects_and_fixes_interrupted_transaction(
     fs = Filesystem()
     cfg = load_config(fs, home=rice_home)
     snap_id = json.loads(
-        runner.invoke(app, ["snapshots", "list", "--json"], catch_exceptions=False).output
+        runner.invoke(app, ["--json", "snapshots", "list"], catch_exceptions=False).output
     )[0]["id"]
 
-    # Craft a crash mid-update.
+    # Craft a crash mid-update (legal transition chain).
     journal = TransactionJournal(fs, cfg.data_dir)
     journal.begin(f"{datetime.now(UTC):%Y%m%d-%H%M%S}")
     journal.record("snapshot_id", snap_id)
+    journal.set_state(TransactionState.SNAPSHOTTED)
     journal.set_state(TransactionState.UPDATING)
 
     # User's config got mangled before the crash.
     conf = rice_home / ".config/hypr/hyprland.conf"
     conf.write_text("garbage\n")
 
-    report = runner.invoke(app, ["doctor", "--json"], catch_exceptions=False)
+    report = runner.invoke(app, ["--json", "doctor"], catch_exceptions=False)
     payload = json.loads(report.output)
     pending_check = next(c for c in payload["checks"] if c["name"] == "pending-transaction")
     assert pending_check["ok"] is False

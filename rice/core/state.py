@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from rice.core.errors import RiceError
-from rice.core.fs import Filesystem
+from rice.core.fs import Filesystem, require_within
 
 
 class TransactionState(enum.StrEnum):
@@ -144,9 +144,22 @@ class TransactionJournal:
         return max(candidates, key=lambda pair: pair[0])[1]
 
     def clear(self) -> None:
-        rec = self.load()
-        if rec is not None and self._path_for(rec.txn_id).exists():
-            self._fs.remove(self._path_for(rec.txn_id))
+        """Delete the most recent journal file, whatever its state.
+
+        Must work for TERMINAL states too (COMMITTED/KNOWN_STATE): load()
+        skips those by design, so keying off load() would leak files forever.
+        """
+        self._fs.ensure_dir(self._dir)
+        latest_path: Path | None = None
+        latest_mtime = -1.0
+        for p in sorted(self._dir.glob("*.json")):
+            require_within(p, [self._dir])
+            mtime = p.stat().st_mtime
+            if mtime >= latest_mtime:
+                latest_mtime = mtime
+                latest_path = p
+        if latest_path is not None:
+            self._fs.remove(latest_path)
 
     def mark_finished_ok(self) -> None:
         """COMMITTED then delete the journal (spec §11: deleted on COMMITTED)."""

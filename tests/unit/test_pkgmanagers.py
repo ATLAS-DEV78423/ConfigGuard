@@ -24,7 +24,7 @@ def test_detect_true_when_apt_present() -> None:
 def test_update_success_issues_two_privileged_calls_with_env() -> None:
     fake = FakeCommandRunner(
         results=[
-            RunResult(args=[], returncode=0),  # fuser probe
+            RunResult(args=[], returncode=1),  # fuser: no lock held
             RunResult(args=[], returncode=0, stdout="Hit:1"),  # apt update
             RunResult(args=[], returncode=0, stdout=UPGRADE_OK),  # apt upgrade
         ]
@@ -63,7 +63,7 @@ def test_dpkg_lock_held_reports_without_running_apt() -> None:
 def test_upgrade_failure_is_reported_not_raised() -> None:
     fake = FakeCommandRunner(
         results=[
-            RunResult(args=[], returncode=0),
+            RunResult(args=[], returncode=1),
             RunResult(args=[], returncode=0),
             RunResult(args=[], returncode=100, stderr="E: Sub-process failed"),
         ]

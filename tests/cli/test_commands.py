@@ -51,7 +51,7 @@ def test_commands_before_init_exit_3(fake_home: Path) -> None:
 
 
 def test_init_non_interactive_persists_config(fake_home: Path) -> None:
-    result = run("init", "--non-interactive")
+    result = run("--non-interactive", "init")
     assert result.exit_code == 0, result.output
     cfg = fake_home / ".config" / "rice" / "config.toml"
     assert cfg.exists()
@@ -62,15 +62,15 @@ def test_init_non_interactive_persists_config(fake_home: Path) -> None:
 
 
 def test_status_after_init(fake_home: Path) -> None:
-    assert run("init", "--non-interactive").exit_code == 0
+    assert run("--non-interactive", "init").exit_code == 0
     result = run("status")
     assert result.exit_code == 0
     assert "Protected apps:" in result.output
 
 
 def test_status_json_parses(fake_home: Path) -> None:
-    assert run("init", "--non-interactive").exit_code == 0
-    result = run("status", "--json")
+    assert run("--non-interactive", "init").exit_code == 0
+    result = run("--json", "status")
     payload = json.loads(result.output)
     assert payload["distro"]["id"] is None or isinstance(payload["distro"]["id"], str)
     assert "hyprland" in payload["protected"]
@@ -82,7 +82,7 @@ def test_status_json_parses(fake_home: Path) -> None:
 
 @pytest.fixture()
 def initialized(fake_home: Path) -> Path:
-    assert run("init", "--non-interactive").exit_code == 0
+    assert run("--non-interactive", "init").exit_code == 0
     return fake_home
 
 
@@ -97,7 +97,7 @@ def test_snapshot_creates_and_lists(initialized: Path) -> None:
 
 def test_snapshot_pin_marks_manifest(initialized: Path) -> None:
     run("snapshot", "--pin")
-    listing = run("snapshots", "list", "--json")
+    listing = run("--json", "snapshots", "list")
     snaps = json.loads(listing.output)
     assert len(snaps) == 1 and snaps[0]["pinned"] is True
 
@@ -111,7 +111,7 @@ def test_snapshots_show_defaults_latest_json(initialized: Path) -> None:
 
 def test_snapshots_delete_requires_force_non_interactive(initialized: Path) -> None:
     run("snapshot")
-    snap_id = json.loads(run("snapshots", "list", "--json").output)[0]["id"]
+    snap_id = json.loads(run("--json", "snapshots", "list").output)[0]["id"]
     denied = runner.invoke(
         app, ["--non-interactive", "snapshots", "delete", snap_id], catch_exceptions=False
     )
@@ -128,7 +128,7 @@ def test_restore_requires_id_non_interactive(initialized: Path) -> None:
     run("snapshot")
     denied = runner.invoke(app, ["--non-interactive", "restore"], catch_exceptions=False)
     assert denied.exit_code == 2
-    snap_id = json.loads(run("snapshots", "list", "--json").output)[0]["id"]
+    snap_id = json.loads(run("--json", "snapshots", "list").output)[0]["id"]
     ok = runner.invoke(app, ["--non-interactive", "restore", snap_id], catch_exceptions=False)
     assert ok.exit_code == 0
     assert "Restored" in ok.output

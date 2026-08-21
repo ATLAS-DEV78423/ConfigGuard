@@ -119,6 +119,7 @@ class SnapshotStore:
 
         sources = self._collect_sources(protected)
 
+        self._fs.ensure_dir(self.data_dir)  # free_space() needs an existing path
         required = int(sum(m.size for m in sources.values()) * SPACE_MARGIN)
         available = self._fs.free_space(root if root.exists() else self.data_dir)
         if required > available:

@@ -1,6 +1,6 @@
 """Command execution abstraction — the ONLY module allowed to call subprocess.
 
-Rules (NFR-003/004/005): argv lists only, never ``shell=True``, never shell
+Rules (NFR-003/004/005): argv lists only, never shell mode, never shell
 strings. ``privileged()`` prefixes sudo; rice never sees or stores passwords.
 """
 

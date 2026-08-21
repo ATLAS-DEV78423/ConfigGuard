@@ -38,10 +38,16 @@ def config_path(home: Path | None = None) -> Path:
 
 
 def _expand(home: Path | None, value: str) -> Path:
-    """Expand ~; anchor relative paths to home when a test home is injected."""
-    p = Path(value).expanduser()
-    if not p.is_absolute():
-        base = home if home is not None else Path.home()
+    """Expand ~; anchor relative paths to home when a test home is injected.
+
+    expanduser() is deliberately avoided: it reads the REAL $HOME, which would
+    defeat the injected-home isolation used by tests and multi-user tooling.
+    """
+    base = home if home is not None else Path.home()
+    p = Path(value)
+    if p.parts and p.parts[0] == "~":
+        p = base.joinpath(*p.parts[1:])
+    elif not p.is_absolute():
         p = base / p
     return p
 

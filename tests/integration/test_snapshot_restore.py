@@ -33,10 +33,10 @@ def test_full_round_trip_via_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(cli_mod, "_HOME_OVERRIDE", home)
     conf = seed(home)
 
-    assert runner.invoke(app, ["init", "--non-interactive"], catch_exceptions=False).exit_code == 0
+    assert runner.invoke(app, ["--non-interactive", "init"], catch_exceptions=False).exit_code == 0
     assert runner.invoke(app, ["snapshot"], catch_exceptions=False).exit_code == 0
 
-    listing = runner.invoke(app, ["snapshots", "list", "--json"], catch_exceptions=False)
+    listing = runner.invoke(app, ["--json", "snapshots", "list"], catch_exceptions=False)
     snap_ids = json.loads(listing.output)
     assert len(snap_ids) == 1
     snap_id = snap_ids[0]["id"]

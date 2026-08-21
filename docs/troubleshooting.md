@@ -2,7 +2,7 @@
 
 ## "no rice configuration found; run 'rice init'" (exit 3)
 
-You have not initialized. Run `rice init` (or `rice init --non-interactive`
+You have not initialized. Run `rice init` (or `rice --non-interactive init`
 to accept all detected configs).
 
 ## "another rice transaction appears to be running"
