@@ -249,29 +249,30 @@ class SnapshotStore:
     def restore(self, snap_id: str, *, dry_run: bool = False) -> list[str]:
         """Verify first, then copy every tracked file back with metadata."""
         manifest = self.verify(snap_id)  # SR-005: never restore an unverified snapshot
-        d = self._dir_for(snap_id)
-        restored: list[str] = []
         if dry_run:
             return [e.rel_path for e in manifest.files]
         for entry in manifest.files:
-            backup = d / entry.backup_rel_path
-            live = self.home / entry.rel_path
-            require_within(live.resolve(), [self.home])
-            if entry.meta.type == "symlink":
-                target = entry.meta.symlink_target or ""
-                resolved = canonicalize(live.parent / target)
-                if not is_within(resolved, [self.home]):
-                    log.warning("skip unsafe symlink %s -> %s", live, target)
-                    continue
-                if live.exists() and not live.is_symlink():
-                    self._fs.remove(live)
-                self._fs.symlink(target, live)
-            elif entry.meta.type == "file":
-                self._fs.copy(backup, live)
-                self._apply_meta(live, entry.meta)
-            restored.append(entry.rel_path)
-            log.info("restored %s from %s", entry.rel_path, snap_id)
-        return restored
+            self.restore_entry(snap_id, entry)
+        return [e.rel_path for e in manifest.files]
+
+    def restore_entry(self, snap_id: str, entry: ManifestEntry) -> None:
+        """Copy ONE tracked file back from a verified snapshot. Idempotent."""
+        d = self._dir_for(snap_id)
+        backup = d / entry.backup_rel_path
+        live = self.home / entry.rel_path
+        require_within(live.resolve(), [self.home])
+        if entry.meta.type == "symlink":
+            target = entry.meta.symlink_target or ""
+            resolved = canonicalize(live.parent / target)
+            if not is_within(resolved, [self.home]):
+                log.warning("skip unsafe symlink %s -> %s", live, target)
+                return
+            if live.exists() and not live.is_symlink():
+                self._fs.remove(live)
+            self._fs.symlink(target, live)
+        elif entry.meta.type == "file":
+            self._fs.copy(backup, live)
+            self._apply_meta(live, entry.meta)
 
     def _apply_meta(self, path: Path, meta: FileMeta) -> None:
         try:

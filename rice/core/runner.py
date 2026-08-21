@@ -71,6 +71,9 @@ class CommandRunner:
                 stderr=f"timed out after {timeout}s",
                 timed_out=True,
             )
+        except (OSError, ValueError) as exc:
+            # Missing binary, permission denied, etc. — never crash the caller.
+            result = RunResult(args=list(args), returncode=127, stderr=str(exc))
         if check and not result.ok:
             raise RiceError(f"command failed ({result.returncode}): {' '.join(result.args)}")
         return result

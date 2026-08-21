@@ -160,6 +160,19 @@ class TransactionJournal:
         self._write(rec)
         self.clear()
 
+    def mark_recovered(self) -> None:
+        """Recovery path from ANY state: RECOVERY -> KNOWN_STATE.
+
+        Deliberately bypasses ALLOWED validation: crash journals can sit in
+        states with no legal forward edge, and recovery must still work.
+        """
+        rec = self._require()
+        rec.state = TransactionState.RECOVERY
+        rec.updated_at = _now()
+        self._write(rec)
+        rec.state = TransactionState.KNOWN_STATE
+        self._write(rec)
+
     # -- internals ----------------------------------------------------------
 
     def _require(self) -> TransactionRecord:

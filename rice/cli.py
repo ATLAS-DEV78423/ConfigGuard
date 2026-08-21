@@ -18,11 +18,12 @@ import typer
 from rice import __version__
 from rice.core.config import RiceConfig, load_config, protected_paths, save_config
 from rice.core.detector import Detector
-from rice.core.errors import RiceError, UsageError
+from rice.core.errors import RiceError, RecoveryError, UsageError, ValidationError_
 from rice.core.fs import Filesystem
 from rice.core.runner import CommandRunner
 from rice.core.snapshot import SnapshotStore
 from rice.core.state import TransactionJournal
+from rice.core.updater import recover_pending
 
 app = typer.Typer(
     name="rice",
@@ -354,6 +355,169 @@ COMPLETION_SNIPPETS = {
     "zsh": 'eval "$(_RICE_COMPLETE=zsh_source rice)"',
     "fish": "_RICE_COMPLETE=fish_source rice | source",
 }
+
+
+@app.command()
+@safe
+def update(ctx: typer.Context) -> None:
+    """Full protected update: snapshot -> apt upgrade -> reconcile -> validate."""
+    c: Ctx = ctx.obj
+    cfg = _load_cfg()
+    from rice.core.reconciler import Action, Finding
+    from rice.core.updater import run_protected_update
+
+    def prompt_conflict(finding: Finding) -> Action:
+        rel = finding.entry.rel_path
+        typer.echo(f"\n[!] Conflict in ~/{rel} ({finding.verdict.value})")
+        if finding.unified_diff:
+            lines = finding.unified_diff.splitlines()
+            shown = lines if len(lines) <= 30 else lines[:30] + ["... (truncated)"]
+            for line in shown:
+                typer.echo(f"    {line}")
+            typer.echo("")
+        while True:
+            raw = typer.prompt(
+                "[1] keep mine  [2] use new  [3] diff  [4] abort", default="1"
+            )
+            if raw.strip() == "1":
+                return Action.KEEP_MINE
+            if raw.strip() == "2":
+                return Action.USE_NEW
+            if raw.strip() == "3":
+                if finding.unified_diff:
+                    typer.echo(finding.unified_diff)
+                else:
+                    typer.echo("(binary file: no textual diff)")
+                continue
+            if raw.strip() == "4":
+                return Action.ABORT
+            typer.echo("choose 1-4", err=True)
+
+    def ask_rollback(failures: list) -> bool:
+        names = ", ".join(r.app for r in failures)
+        return typer.confirm(
+            f"Validation failed for {names}. Roll back to the pre-update snapshot?",
+            default=True,
+        )
+
+    code = run_protected_update(
+        fs=_fs(),
+        cfg=cfg,
+        runner=CommandRunner(),
+        home=_home(),
+        interactive=not c.non_interactive,
+        dry_run=c.dry_run,
+        decide=None if c.non_interactive else prompt_conflict,
+        ask_rollback=None if c.non_interactive else ask_rollback,
+    )
+    raise typer.Exit(code)
+
+
+@app.command()
+@safe
+def diff(
+    ctx: typer.Context,
+    snap_id: str | None = typer.Argument(None, help="Snapshot id (default: latest)."),
+) -> None:
+    """Show diffs between a snapshot and current configs."""
+    c: Ctx = ctx.obj
+    cfg = _load_cfg()
+    store = _store(cfg)
+    resolved = store.resolve_id(snap_id)
+
+    from rice.core.reconciler import Reconciler, Verdict
+
+    findings = Reconciler(_fs(), store).analyze(resolved)
+    interesting = [f for f in findings if f.verdict is not Verdict.UNCHANGED]
+
+    if c.json_out:
+        _echo_json({
+            "snapshot": resolved,
+            "findings": [
+                {"path": f.entry.rel_path, "verdict": f.verdict.value}
+                for f in interesting
+            ],
+        })
+        return
+
+    typer.echo(f"Comparing snapshot {resolved}: {len(interesting)} difference(s)")
+    for f in interesting:
+        typer.echo(f"\n=== ~/{f.entry.rel_path} [{f.verdict.value}]")
+        if f.unified_diff:
+            typer.echo(f.unified_diff.rstrip())
+        elif f.verdict is Verdict.TYPE_CHANGED:
+            typer.echo(f"(type changed: snapshot={f.entry.meta.type})")
+        else:
+            typer.echo("(file is missing in current config)")
+
+
+@app.command()
+@safe
+def doctor(
+    ctx: typer.Context,
+    fix: bool = typer.Option(False, "--fix", help="Attempt auto-fix where possible."),
+) -> None:
+    """Check rice health; optionally recover an interrupted transaction."""
+    c: Ctx = ctx.obj
+    cfg = _load_cfg()
+    fs = _fs()
+    store = _store(cfg)
+    journal = TransactionJournal(fs, cfg.data_dir)
+
+    checks: list[dict[str, Any]] = []
+
+    roots = protected_paths(cfg)
+    missing_roots = [p for p in roots if not p.exists()]
+    checks.append({
+        "name": "protected-paths",
+        "ok": len(missing_roots) < len(roots),
+        "message": f"{len(roots) - len(missing_roots)}/{len(roots)} present",
+    })
+
+    latest = store.latest()
+    snap_ok = True
+    snap_msg = "no snapshots yet"
+    if latest is not None:
+        try:
+            store.verify(latest.timestamp)
+            snap_ok, snap_msg = True, f"{latest.timestamp} verified"
+        except RiceError as exc:
+            snap_ok, snap_msg = False, str(exc)
+    checks.append({"name": "last-snapshot-integrity", "ok": snap_ok, "message": snap_msg})
+
+    pending = journal.load()
+    txn_state = pending.state.value if pending else None
+    checks.append({
+        "name": "pending-transaction",
+        "ok": pending is None,
+        "message": f"state={txn_state}" if pending else "none",
+    })
+
+    recovered: list[str] = []
+    if fix and pending is not None:
+        try:
+            _state, done = recover_pending(journal, store, apply=True)
+        except RiceError as exc:
+            raise RecoveryError(f"could not recover transaction: {exc.message}") from exc
+        if done:
+            recovered.append(txn_state or "?")
+            checks[-1] = {"name": "pending-transaction", "ok": True,
+                          "message": f"recovered (was {txn_state})"}
+
+    if c.json_out:
+        _echo_json({"checks": checks, "fixed": recovered})
+    else:
+        for check in checks:
+            mark = "ok" if check["ok"] else "!!"
+            typer.echo(f"[{mark}] {check['name']}: {check['message']}")
+        if recovered:
+            typer.echo(f"Recovered {len(recovered)} interrupted transaction(s).")
+
+    unresolved = [ch for ch in checks if not ch["ok"]]
+    if unresolved:
+        raise ValidationError_(
+            "; ".join(f"{ch['name']}: {ch['message']}" for ch in unresolved)
+        )
 
 
 @app.command()
