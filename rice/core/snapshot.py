@@ -195,7 +195,9 @@ class SnapshotStore:
             "file_count": len(manifest.files),
             "pinned": manifest.pinned,
         }
-        self._fs.write_atomically(dir_path / "metadata.json", json.dumps(metadata, indent=2).encode())
+        self._fs.write_atomically(
+            dir_path / "metadata.json", json.dumps(metadata, indent=2).encode()
+        )
 
     def _collect_sources(self, protected: list[Path]) -> dict[Path, FileMeta]:
         """Existing entries under protected roots, scope-checked, symlinks vetted."""

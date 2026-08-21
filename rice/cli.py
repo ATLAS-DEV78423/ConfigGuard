@@ -470,7 +470,7 @@ def doctor(
     missing_roots = [p for p in roots if not p.exists()]
     checks.append({
         "name": "protected-paths",
-        "ok": len(missing_roots) < len(roots),
+        "ok": len(missing_roots) == 0,
         "message": f"{len(roots) - len(missing_roots)}/{len(roots)} present",
     })
 
