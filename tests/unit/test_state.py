@@ -9,7 +9,8 @@ import pytest
 
 from rice.core.errors import RiceError
 from rice.core.fs import Filesystem
-from rice.core.state import TransactionJournal, TransactionState as TS
+from rice.core.state import TransactionJournal
+from rice.core.state import TransactionState as TS
 
 
 @pytest.fixture()
@@ -66,9 +67,7 @@ def test_record_snapshot_and_decisions(tmp_path: Path, journal: TransactionJourn
     assert raw["decisions"] == [{"path": ".config/hypr/hyprland.conf", "action": "keep-mine"}]
 
 
-def test_load_reconstructs_crashed_transaction(
-    tmp_path: Path, journal: TransactionJournal
-) -> None:
+def test_load_reconstructs_crashed_transaction(tmp_path: Path, journal: TransactionJournal) -> None:
     data = tmp_path / "data"
     (data / "transactions").mkdir(parents=True)
     crash = {

@@ -43,13 +43,11 @@ def test_create_then_restore_round_trip(env: tuple[SnapshotStore, Path, Path]) -
 
 
 def test_create_verifies_immediately_and_detects_tamper(
-    env: tuple[SnapshotStore, Path, Path]
+    env: tuple[SnapshotStore, Path, Path],
 ) -> None:
     store, fs, home = env
     snap = store.create(protected(home))
-    backup = (
-        store.snapshots_root() / snap.timestamp / "files/.config/hypr/hyprland.conf"
-    )
+    backup = store.snapshots_root() / snap.timestamp / "files/.config/hypr/hyprland.conf"
     backup.write_text("tampered\n")
     with pytest.raises(SnapshotError, match="hash mismatch"):
         store.verify(snap.timestamp)
@@ -71,10 +69,18 @@ def test_insufficient_disk_space_aborts_before_copying(
 ) -> None:
     store, fs, home = env
     monkeypatch.setattr(fs, "free_space", lambda _p: 0)
-    before = sorted(str(p) for p in (store.snapshots_root()).glob("*")) if store.snapshots_root().exists() else []
+    before = (
+        sorted(str(p) for p in (store.snapshots_root()).glob("*"))
+        if store.snapshots_root().exists()
+        else []
+    )
     with pytest.raises(SnapshotError, match="insufficient disk space"):
         store.create(protected(home))
-    after = sorted(str(p) for p in (store.snapshots_root()).glob("*")) if store.snapshots_root().exists() else []
+    after = (
+        sorted(str(p) for p in (store.snapshots_root()).glob("*"))
+        if store.snapshots_root().exists()
+        else []
+    )
     assert before == after  # nothing written (FR-002 spirit: no partial snapshot)
 
 
@@ -106,9 +112,7 @@ def test_in_scope_symlink_recorded_and_restored(env: tuple[SnapshotStore, Path, 
     assert real.exists()
 
 
-def test_delete_only_inside_snapshots_root(
-    env: tuple[SnapshotStore, Path, Path]
-) -> None:
+def test_delete_only_inside_snapshots_root(env: tuple[SnapshotStore, Path, Path]) -> None:
     store, fs, home = env
     with pytest.raises(ScopeViolation):
         # path traversal via id: resolved dir must stay under snapshots root
@@ -119,7 +123,7 @@ def test_list_get_latest_ordering(env: tuple[SnapshotStore, Path, Path]) -> None
     store, fs, home = env
     s1 = store.create(protected(home))
     s2 = store.create(protected(home))
-    ids = [m.timestamp for m in store.list()]
+    ids = [m.timestamp for m in store.list_all()]
     assert ids == sorted(ids)
     assert len(set(ids)) == len(ids)  # collision suffixes keep ids unique
     assert store.get(s1.timestamp).timestamp == s1.timestamp
@@ -128,16 +132,15 @@ def test_list_get_latest_ordering(env: tuple[SnapshotStore, Path, Path]) -> None
         store.get("nope")
 
 
-def test_prune_keeps_pinned_recent_and_last_ten(
-    env: tuple[SnapshotStore, Path, Path]
-) -> None:
+def test_prune_keeps_pinned_recent_and_last_ten(env: tuple[SnapshotStore, Path, Path]) -> None:
     store, fs, home = env
     pinned = store.create(protected(home), pinned=True)
-    fresh = [store.create(protected(home)) for _ in range(RETENTION_KEEP + 3)]
+    for _ in range(RETENTION_KEEP + 3):
+        store.create(protected(home))
     doomed = store.prune()
-    remaining = {m.timestamp for m in store.list()}
+    remaining = {m.timestamp for m in store.list_all()}
     assert pinned.timestamp in remaining  # pins survive forever
-    assert len(doomed) == 3               # exactly the overflow beyond last-10
+    assert len(doomed) == 3  # exactly the overflow beyond last-10
     for sid in doomed:
         assert sid not in remaining
 
@@ -145,9 +148,7 @@ def test_prune_keeps_pinned_recent_and_last_ten(
 def test_manifest_json_shape(env: tuple[SnapshotStore, Path, Path]) -> None:
     store, fs, home = env
     snap = store.create(protected(home), packages=["hyprland"])
-    raw = json.loads(
-        fs.read(store.snapshots_root() / snap.timestamp / "manifest.json")
-    )
+    raw = json.loads(fs.read(store.snapshots_root() / snap.timestamp / "manifest.json"))
     assert raw["packages_upgraded"] == ["hyprland"]
     f0 = raw["files"][0]
     assert f0["rel_path"] == ".config/hypr/hyprland.conf"

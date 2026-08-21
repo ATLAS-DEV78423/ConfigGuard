@@ -8,18 +8,18 @@ taken in the new state. A crash at any point leaves a readable journal that
 
 from __future__ import annotations
 
+import enum
 import json
-from collections.abc import Any
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from rice.core.errors import RiceError
 from rice.core.fs import Filesystem
 
 
-class TransactionState(str, Enum):
+class TransactionState(enum.StrEnum):
     IDLE = "IDLE"
     PREPARING = "PREPARING"
     SNAPSHOTTED = "SNAPSHOTTED"
@@ -48,9 +48,7 @@ ALLOWED: dict[TransactionState, frozenset[TransactionState]] = {
         {TransactionState.VALIDATING, TransactionState.CONFLICT}
     ),
     TransactionState.CONFLICT: frozenset({TransactionState.RECOVERY, TransactionState.KNOWN_STATE}),
-    TransactionState.VALIDATING: frozenset(
-        {TransactionState.COMMITTED, TransactionState.RECOVERY}
-    ),
+    TransactionState.VALIDATING: frozenset({TransactionState.COMMITTED, TransactionState.RECOVERY}),
     TransactionState.COMMITTED: frozenset(),
     TransactionState.UPDATE_FAILED: frozenset({TransactionState.KNOWN_STATE}),
     TransactionState.RECOVERY: frozenset({TransactionState.KNOWN_STATE}),
@@ -61,7 +59,7 @@ TERMINAL_STATES = frozenset({TransactionState.COMMITTED, TransactionState.KNOWN_
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 @dataclass

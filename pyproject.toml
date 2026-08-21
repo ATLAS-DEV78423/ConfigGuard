@@ -29,5 +29,6 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
 python_version = "3.11"
+platform = "linux"
 disallow_untyped_defs = true
 warn_return_any = true

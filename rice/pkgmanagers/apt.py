@@ -56,11 +56,7 @@ class AptPackageManager(PackageManager):
             return result
 
         r2 = runner.privileged([*_ENV, "apt", "upgrade", "-y"], timeout=None)
-        result = (
-            self._success(r2)
-            if r2.ok
-            else self._failure(r2, prior_stdout=r1.stdout)
-        )
+        result = self._success(r2) if r2.ok else self._failure(r2, prior_stdout=r1.stdout)
         self._last = result
         return result
 

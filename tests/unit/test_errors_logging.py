@@ -55,7 +55,11 @@ def test_redact_leaves_normal_text() -> None:
 
 def test_setup_logging_levels(tmp_path: Path) -> None:
     logger = logging.getLogger("rice")
-    for verbose, quiet, expected in [(True, False, logging.DEBUG), (False, True, logging.WARNING), (False, False, logging.INFO)]:
+    for verbose, quiet, expected in [
+        (True, False, logging.DEBUG),
+        (False, True, logging.WARNING),
+        (False, False, logging.INFO),
+    ]:
         logger._rice_configured = False  # type: ignore[attr-defined]
         for h in list(logger.handlers):
             logger.removeHandler(h)

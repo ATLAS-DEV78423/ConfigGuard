@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
+from datetime import UTC
 from pathlib import Path
-from typing import Callable
 
 import pytest
 from typer.testing import CliRunner
@@ -66,19 +67,20 @@ def apt_script(
 def test_update_success_via_cli(rice_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     conf = rice_home / ".config/hypr/hyprland.conf"
     monkeypatch.setattr(
-        updater_mod, "_TEST_SCRIPT", apt_script(on_upgrade=lambda: conf.write_text("monitor=@165\n"))
+        updater_mod,
+        "_TEST_SCRIPT",
+        apt_script(on_upgrade=lambda: conf.write_text("monitor=@165\n")),
     )
     result = runner.invoke(app, ["update"], catch_exceptions=False)
     assert result.exit_code == 0
     assert "@144" in conf.read_text()  # reconciled back to user's version
 
 
-def test_update_dry_run_touches_nothing(
-    rice_home: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_update_dry_run_touches_nothing(rice_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     called = []
     monkeypatch.setattr(
-        updater_mod, "_TEST_SCRIPT",
+        updater_mod,
+        "_TEST_SCRIPT",
         apt_script(on_upgrade=lambda: called.append(1)),
     )
     result = runner.invoke(app, ["--dry-run", "update"], catch_exceptions=False)
@@ -88,19 +90,19 @@ def test_update_dry_run_touches_nothing(
 
 def test_update_apt_failure_exit_5(rice_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        updater_mod, "_TEST_SCRIPT",
+        updater_mod,
+        "_TEST_SCRIPT",
         apt_script(upgrade_rc=100, upgrade_stderr="E: broken"),
     )
     result = runner.invoke(app, ["--non-interactive", "update"], catch_exceptions=False)
     assert result.exit_code == 5
 
 
-def test_update_validation_failure_exit_7(
-    rice_home: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_update_validation_failure_exit_7(rice_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     conf = rice_home / ".config/hypr/hyprland.conf"
     monkeypatch.setattr(
-        updater_mod, "_TEST_SCRIPT",
+        updater_mod,
+        "_TEST_SCRIPT",
         apt_script(
             on_upgrade=lambda: conf.write_text("monitor=@165\n"),
             reload_rc=1,
@@ -121,9 +123,7 @@ def test_diff_reports_changes_json(rice_home: Path, monkeypatch: pytest.MonkeyPa
 
     result = runner.invoke(app, ["diff", "--json"], catch_exceptions=False)
     payload = json.loads(result.output)
-    assert payload["findings"] == [
-        {"path": ".config/hypr/hyprland.conf", "verdict": "changed"}
-    ]
+    assert payload["findings"] == [{"path": ".config/hypr/hyprland.conf", "verdict": "changed"}]
 
 
 def test_diff_human_shows_unified_diff(rice_home: Path) -> None:
@@ -152,11 +152,10 @@ def test_doctor_healthy_after_init(rice_home: Path) -> None:
 def test_doctor_detects_and_fixes_interrupted_transaction(
     rice_home: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from rice.core.config import load_config
     from rice.core.fs import Filesystem
-    from rice.core.snapshot import SnapshotStore
     from rice.core.state import TransactionJournal, TransactionState
 
     assert runner.invoke(app, ["snapshot"], catch_exceptions=False).exit_code == 0
@@ -168,7 +167,7 @@ def test_doctor_detects_and_fixes_interrupted_transaction(
 
     # Craft a crash mid-update.
     journal = TransactionJournal(fs, cfg.data_dir)
-    journal.begin(f"{datetime.now(timezone.utc):%Y%m%d-%H%M%S}")
+    journal.begin(f"{datetime.now(UTC):%Y%m%d-%H%M%S}")
     journal.record("snapshot_id", snap_id)
     journal.set_state(TransactionState.UPDATING)
 

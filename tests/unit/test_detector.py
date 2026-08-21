@@ -10,11 +10,13 @@ from rice.core.runner import FakeCommandRunner
 
 UBUNTU_RELEASE = b'NAME="Ubuntu"\nID=ubuntu\nVERSION_ID="24.04"\n'
 DEBIAN_RELEASE = b'ID=debian\nVERSION_ID="13"\n'
-ARCH_RELEASE = b'ID=arch\nID_LIKE=arch\n'
+ARCH_RELEASE = b"ID=arch\nID_LIKE=arch\n"
 
 
 def make_detector(
-    tmp_path: Path, release: bytes | None = None, environ: dict[str, str] | None = None,
+    tmp_path: Path,
+    release: bytes | None = None,
+    environ: dict[str, str] | None = None,
     apps: list[str] | None = None,
 ) -> Detector:
     fs = Filesystem()
@@ -55,7 +57,11 @@ def test_missing_release_is_unsupported_not_crash(tmp_path: Path) -> None:
 
 
 def test_desktop_and_wayland_from_environ(tmp_path: Path) -> None:
-    det = make_detector(tmp_path, UBUNTU_RELEASE, environ={"XDG_SESSION_DESKTOP": "hyprland", "WAYLAND_DISPLAY": "wayland-1"})
+    det = make_detector(
+        tmp_path,
+        UBUNTU_RELEASE,
+        environ={"XDG_SESSION_DESKTOP": "hyprland", "WAYLAND_DISPLAY": "wayland-1"},
+    )
     d = det.system()
     assert d.desktop == "hyprland" and d.wayland
 

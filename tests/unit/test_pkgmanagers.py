@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from rice.core.runner import FakeCommandRunner, RunResult
 from rice.pkgmanagers.apt import AptPackageManager, looks_like_sudo_failure
 from rice.pkgmanagers.base import UpdateResult
@@ -26,9 +24,9 @@ def test_detect_true_when_apt_present() -> None:
 def test_update_success_issues_two_privileged_calls_with_env() -> None:
     fake = FakeCommandRunner(
         results=[
-            RunResult(args=[], returncode=0),                      # fuser probe
-            RunResult(args=[], returncode=0, stdout="Hit:1"),      # apt update
-            RunResult(args=[], returncode=0, stdout=UPGRADE_OK),   # apt upgrade
+            RunResult(args=[], returncode=0),  # fuser probe
+            RunResult(args=[], returncode=0, stdout="Hit:1"),  # apt update
+            RunResult(args=[], returncode=0, stdout=UPGRADE_OK),  # apt upgrade
         ]
     )
     pm = AptPackageManager()
@@ -82,9 +80,7 @@ def test_changed_packages_empty_before_any_update() -> None:
 
 
 def test_looks_like_sudo_failure() -> None:
-    sudo_fail = UpdateResult(success=False, exit_code=1,
-                             stderr_tail="sudo: a password is required")
-    other_fail = UpdateResult(success=False, exit_code=100,
-                              stderr_tail="E: unable to fetch")
+    sudo_fail = UpdateResult(success=False, exit_code=1, stderr_tail="sudo: a password is required")
+    other_fail = UpdateResult(success=False, exit_code=100, stderr_tail="E: unable to fetch")
     assert looks_like_sudo_failure(sudo_fail) is True
     assert looks_like_sudo_failure(other_fail) is False

@@ -46,7 +46,6 @@ def _expand(home: Path | None, value: str) -> Path:
     return p
 
 
-
 def load_config(fs: Filesystem, home: Path | None = None) -> RiceConfig:
     """Load config or raise ConfigError(3) telling the user to run init."""
     path = config_path(home)
@@ -84,9 +83,7 @@ def save_config(cfg: RiceConfig, fs: Filesystem, home: Path | None = None) -> Pa
     """Persist config atomically; returns the path written."""
     doc: dict[str, object] = {
         "rice": {"data_dir": str(cfg.data_dir), "version": cfg.version},
-        "protected": {
-            app: [str(p) for p in paths] for app, paths in sorted(cfg.protected.items())
-        },
+        "protected": {app: [str(p) for p in paths] for app, paths in sorted(cfg.protected.items())},
     }
     path = config_path(home)
     fs.write_atomically(path, tomli_w.dumps(doc).encode("utf-8"))

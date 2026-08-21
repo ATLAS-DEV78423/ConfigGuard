@@ -76,8 +76,7 @@ def require_within(path: Path, roots: Sequence[Path]) -> None:
     """Raise ScopeViolation unless path is inside one of roots."""
     if not is_within(path, roots):
         raise ScopeViolation(
-            f"refusing to touch {path}: outside approved scope "
-            f"({', '.join(str(r) for r in roots)})"
+            f"refusing to touch {path}: outside approved scope ({', '.join(str(r) for r in roots)})"
         )
 
 

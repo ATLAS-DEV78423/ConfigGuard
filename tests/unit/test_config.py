@@ -45,9 +45,7 @@ def test_save_load_round_trip(tmp_path: Path) -> None:
 def test_config_file_shape_matches_spec(tmp_path: Path) -> None:
     """Spec §12 shape: [rice] + [protected] sections."""
     fs = Filesystem()
-    cfg = RiceConfig(
-        data_dir=tmp_path / "d", protected={"kitty": [tmp_path / ".config/kitty"]}
-    )
+    cfg = RiceConfig(data_dir=tmp_path / "d", protected={"kitty": [tmp_path / ".config/kitty"]})
     p = save_config(cfg, fs, home=tmp_path)
     text = fs.read(p).decode()
     assert "[rice]" in text and "[protected]" in text

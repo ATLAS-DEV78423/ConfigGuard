@@ -8,17 +8,18 @@ production always uses Path.home().
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 import typer
 
 from rice import __version__
 from rice.core.config import RiceConfig, load_config, protected_paths, save_config
 from rice.core.detector import Detector
-from rice.core.errors import RiceError, RecoveryError, UsageError, ValidationError_
+from rice.core.errors import RecoveryError, RiceError, UsageError, ValidationError_
 from rice.core.fs import Filesystem
 from rice.core.runner import CommandRunner
 from rice.core.snapshot import SnapshotStore
@@ -72,7 +73,10 @@ def _version_callback(value: bool) -> None:
 def main(
     ctx: typer.Context,
     version: bool = typer.Option(
-        False, "--version", callback=_version_callback, is_eager=True,
+        False,
+        "--version",
+        callback=_version_callback,
+        is_eager=True,
         help="Print version and exit.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Debug output."),
@@ -155,9 +159,7 @@ def init(ctx: typer.Context) -> None:
 
     extra: list[Path] = []
     if not c.non_interactive:
-        raw = typer.prompt(
-            "Additional paths to protect (comma-separated, blank=none)", default=""
-        )
+        raw = typer.prompt("Additional paths to protect (comma-separated, blank=none)", default="")
         for part in (s.strip() for s in raw.split(",") if s.strip()):
             p = Path(part).expanduser()
             if not p.is_absolute():
@@ -173,8 +175,12 @@ def init(ctx: typer.Context) -> None:
     path = save_config(cfg, _fs(), home=_home())
     typer.echo(f"Saved {path}")
     if c.json_out:
-        _echo_json({"protected": {k: [str(p) for p in v] for k, v in protected.items()},
-                    "data_dir": str(cfg.data_dir)})
+        _echo_json(
+            {
+                "protected": {k: [str(p) for p in v] for k, v in protected.items()},
+                "data_dir": str(cfg.data_dir),
+            }
+        )
 
 
 @app.command()
@@ -195,10 +201,7 @@ def status(ctx: typer.Context) -> None:
         "desktop": d.desktop,
         "wayland": d.wayland,
         "data_dir": str(cfg.data_dir),
-        "protected": {
-            k: [str(p) for p in v]
-            for k, v in sorted(cfg.protected.items())
-        },
+        "protected": {k: [str(p) for p in v] for k, v in sorted(cfg.protected.items())},
         "last_snapshot": (
             {"id": latest.timestamp, "files": len(latest.files), "pinned": latest.pinned}
             if latest
@@ -212,8 +215,10 @@ def status(ctx: typer.Context) -> None:
         _echo_json(payload)
         return
     distro = payload["distro"]
-    typer.echo(f"System: {distro['id'] or 'unknown'} {distro['version'] or ''}"
-               f"{'' if distro['supported'] else ' (unsupported)'}")
+    typer.echo(
+        f"System: {distro['id'] or 'unknown'} {distro['version'] or ''}"
+        f"{'' if distro['supported'] else ' (unsupported)'}"
+    )
     typer.echo(f"Desktop: {d.desktop or 'unknown'}{' (Wayland)' if d.wayland else ''}")
     total = sum(len(v) for v in cfg.protected.values())
     typer.echo(f"Protected apps: {len(cfg.protected)} ({total} roots)")
@@ -222,8 +227,10 @@ def status(ctx: typer.Context) -> None:
     else:
         typer.echo("Last snapshot: none")
     if pending:
-        typer.echo(f"[!] Interrupted transaction {pending.txn_id} in state "
-                   f"{pending.state.value}; run 'rice doctor'")
+        typer.echo(
+            f"[!] Interrupted transaction {pending.txn_id} in state "
+            f"{pending.state.value}; run 'rice doctor'"
+        )
 
 
 @app.command()
@@ -278,12 +285,9 @@ def snapshots_list(ctx: typer.Context) -> None:
     """List all snapshots."""
     c: Ctx = ctx.obj
     cfg = _load_cfg()
-    snaps = _store(cfg).list()
+    snaps = _store(cfg).list_all()
     if c.json_out:
-        _echo_json([
-            {"id": m.timestamp, "files": len(m.files), "pinned": m.pinned}
-            for m in snaps
-        ])
+        _echo_json([{"id": m.timestamp, "files": len(m.files), "pinned": m.pinned} for m in snaps])
         return
     if not snaps:
         typer.echo("No snapshots.")
@@ -307,8 +311,10 @@ def snapshots_show(
     if c.json_out:
         _echo_json(manifest.to_json())
         return
-    typer.echo(f"Snapshot {manifest.timestamp} host={manifest.host} "
-               f"desktop={manifest.desktop or '?'} pinned={manifest.pinned}")
+    typer.echo(
+        f"Snapshot {manifest.timestamp} host={manifest.host} "
+        f"desktop={manifest.desktop or '?'} pinned={manifest.pinned}"
+    )
     typer.echo(f"Packages upgraded: {', '.join(manifest.packages_upgraded) or '(manual snapshot)'}")
     for e in manifest.files:
         kind = e.meta.type
@@ -376,9 +382,7 @@ def update(ctx: typer.Context) -> None:
                 typer.echo(f"    {line}")
             typer.echo("")
         while True:
-            raw = typer.prompt(
-                "[1] keep mine  [2] use new  [3] diff  [4] abort", default="1"
-            )
+            raw = typer.prompt("[1] keep mine  [2] use new  [3] diff  [4] abort", default="1")
             if raw.strip() == "1":
                 return Action.KEEP_MINE
             if raw.strip() == "2":
@@ -431,13 +435,14 @@ def diff(
     interesting = [f for f in findings if f.verdict is not Verdict.UNCHANGED]
 
     if c.json_out:
-        _echo_json({
-            "snapshot": resolved,
-            "findings": [
-                {"path": f.entry.rel_path, "verdict": f.verdict.value}
-                for f in interesting
-            ],
-        })
+        _echo_json(
+            {
+                "snapshot": resolved,
+                "findings": [
+                    {"path": f.entry.rel_path, "verdict": f.verdict.value} for f in interesting
+                ],
+            }
+        )
         return
 
     typer.echo(f"Comparing snapshot {resolved}: {len(interesting)} difference(s)")
@@ -468,11 +473,13 @@ def doctor(
 
     roots = protected_paths(cfg)
     missing_roots = [p for p in roots if not p.exists()]
-    checks.append({
-        "name": "protected-paths",
-        "ok": len(missing_roots) == 0,
-        "message": f"{len(roots) - len(missing_roots)}/{len(roots)} present",
-    })
+    checks.append(
+        {
+            "name": "protected-paths",
+            "ok": len(missing_roots) == 0,
+            "message": f"{len(roots) - len(missing_roots)}/{len(roots)} present",
+        }
+    )
 
     latest = store.latest()
     snap_ok = True
@@ -487,11 +494,13 @@ def doctor(
 
     pending = journal.load()
     txn_state = pending.state.value if pending else None
-    checks.append({
-        "name": "pending-transaction",
-        "ok": pending is None,
-        "message": f"state={txn_state}" if pending else "none",
-    })
+    checks.append(
+        {
+            "name": "pending-transaction",
+            "ok": pending is None,
+            "message": f"state={txn_state}" if pending else "none",
+        }
+    )
 
     recovered: list[str] = []
     if fix and pending is not None:
@@ -501,8 +510,11 @@ def doctor(
             raise RecoveryError(f"could not recover transaction: {exc.message}") from exc
         if done:
             recovered.append(txn_state or "?")
-            checks[-1] = {"name": "pending-transaction", "ok": True,
-                          "message": f"recovered (was {txn_state})"}
+            checks[-1] = {
+                "name": "pending-transaction",
+                "ok": True,
+                "message": f"recovered (was {txn_state})",
+            }
 
     if c.json_out:
         _echo_json({"checks": checks, "fixed": recovered})
@@ -515,9 +527,7 @@ def doctor(
 
     unresolved = [ch for ch in checks if not ch["ok"]]
     if unresolved:
-        raise ValidationError_(
-            "; ".join(f"{ch['name']}: {ch['message']}" for ch in unresolved)
-        )
+        raise ValidationError_("; ".join(f"{ch['name']}: {ch['message']}" for ch in unresolved))
 
 
 @app.command()

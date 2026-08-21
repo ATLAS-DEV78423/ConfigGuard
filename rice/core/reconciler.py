@@ -71,9 +71,9 @@ def _text_diff(old: bytes, new: bytes) -> str | None:
         new_lines = new.decode("utf-8").splitlines(keepends=True)
     except UnicodeDecodeError:
         return None  # binary config: no textual diff in V1
-    return "".join(difflib.unified_diff(
-        old_lines, new_lines, fromfile="snapshot", tofile="current"
-    ))
+    return "".join(
+        difflib.unified_diff(old_lines, new_lines, fromfile="snapshot", tofile="current")
+    )
 
 
 class Reconciler:
@@ -111,9 +111,13 @@ class Reconciler:
 
     # -- resolution ---------------------------------------------------------
 
-    def resolve(self, snap_id: str, decide: Decider,
-                on_decision: Callable[[dict[str, str]], None] | None = None) -> Resolution:
-        manifest = self._store.verify(snap_id)
+    def resolve(
+        self,
+        snap_id: str,
+        decide: Decider,
+        on_decision: Callable[[dict[str, str]], None] | None = None,
+    ) -> Resolution:
+        self._store.verify(snap_id)  # integrity gate (SR-005)
         resolution = Resolution()
         for finding in self.analyze(snap_id):
             entry = finding.entry
@@ -145,8 +149,9 @@ class Reconciler:
                         resolution.conflicts_resolved += 1
                     else:
                         resolution.kept_mine += 1
-                log.info("decision %s: %s (%s)", entry.rel_path, record["action"],
-                         finding.verdict.value)
+                log.info(
+                    "decision %s: %s (%s)", entry.rel_path, record["action"], finding.verdict.value
+                )
 
             resolution.actions.append(record)
             if on_decision:

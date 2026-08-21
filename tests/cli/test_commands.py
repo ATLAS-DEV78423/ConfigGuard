@@ -117,7 +117,8 @@ def test_snapshots_delete_requires_force_non_interactive(initialized: Path) -> N
     )
     assert denied.exit_code == 2
     ok = runner.invoke(
-        app, ["--non-interactive", "snapshots", "delete", snap_id, "--force"],
+        app,
+        ["--non-interactive", "snapshots", "delete", snap_id, "--force"],
         catch_exceptions=False,
     )
     assert ok.exit_code == 0
@@ -128,9 +129,7 @@ def test_restore_requires_id_non_interactive(initialized: Path) -> None:
     denied = runner.invoke(app, ["--non-interactive", "restore"], catch_exceptions=False)
     assert denied.exit_code == 2
     snap_id = json.loads(run("snapshots", "list", "--json").output)[0]["id"]
-    ok = runner.invoke(
-        app, ["--non-interactive", "restore", snap_id], catch_exceptions=False
-    )
+    ok = runner.invoke(app, ["--non-interactive", "restore", snap_id], catch_exceptions=False)
     assert ok.exit_code == 0
     assert "Restored" in ok.output
 

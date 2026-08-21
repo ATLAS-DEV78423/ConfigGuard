@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-from rice.cli import _HOME_OVERRIDE
 from rice.core.fs import Filesystem
 
 FIXTURES = Path(__file__).parent / "fixtures"

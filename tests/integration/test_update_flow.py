@@ -7,8 +7,9 @@ call runs.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import UTC
 from pathlib import Path
-from typing import Callable
 
 import pytest
 
@@ -22,8 +23,9 @@ from rice.core.errors import (
 )
 from rice.core.fs import Filesystem
 from rice.core.reconciler import Action
-from rice.core.updater import TransactionLock, recover_pending, run_protected_update
+from rice.core.runner import FakeCommandRunner, RunResult
 from rice.core.state import TransactionJournal
+from rice.core.updater import TransactionLock, recover_pending, run_protected_update
 
 OK = 0
 
@@ -53,8 +55,6 @@ def script_apt(
 ) -> Callable[[list[str]], object]:
     """Builds a runner script that answers lock probe/update/upgrade/validation."""
 
-    from rice.core.runner import RunResult
-
     def script(args: list[str]) -> RunResult:
         joined = " ".join(args)
         if args[0] == "fuser":
@@ -80,7 +80,11 @@ def test_success_path_restores_clobbered_config(tmp_path: Path) -> None:
 
     runner = FakeCommandRunner(script=script_apt(on_upgrade=clobber))
     code = run_protected_update(
-        fs=fs, cfg=cfg, runner=runner, home=home, interactive=False,
+        fs=fs,
+        cfg=cfg,
+        runner=runner,
+        home=home,
+        interactive=False,
         decide=lambda _f: Action.KEEP_MINE,
     )
     assert code == 0
@@ -97,7 +101,7 @@ def test_apt_failure_exits_5_without_reconciling(tmp_path: Path) -> None:
         run_protected_update(fs=fs, cfg=cfg, runner=runner, home=home, interactive=False)
 
     assert excinfo.value.exit_code == 5
-    assert "@144" in conf.read_text()          # untouched (FR-018)
+    assert "@144" in conf.read_text()  # untouched (FR-018)
     assert "rice restore" in str(excinfo.value)  # recovery hint present
     assert TransactionJournal(fs, cfg.data_dir).load() is None  # known state
 
@@ -115,8 +119,6 @@ def test_sudo_failure_maps_to_exit_9(tmp_path: Path) -> None:
 def test_dpkg_lock_blocks_update_before_any_apt_call(tmp_path: Path) -> None:
     fs, cfg, home = make_env(tmp_path)
 
-    from rice.core.runner import RunResult
-
     calls: list[list[str]] = []
 
     def script(args: list[str]) -> RunResult:
@@ -131,8 +133,9 @@ def test_dpkg_lock_blocks_update_before_any_apt_call(tmp_path: Path) -> None:
         return RunResult(args=args, returncode=0)
 
     with pytest.raises(UpdateFailedError):
-        run_protected_update(fs=fs, cfg=cfg, runner=FakeCommandRunner(script=script), home=home,
-                             interactive=False)
+        run_protected_update(
+            fs=fs, cfg=cfg, runner=FakeCommandRunner(script=script), home=home, interactive=False
+        )
     apt_calls = [c for c in calls if "sudo" in c]
     assert apt_calls == []  # only probes ran, never privileged apt (FR-032)
 
@@ -140,8 +143,6 @@ def test_dpkg_lock_blocks_update_before_any_apt_call(tmp_path: Path) -> None:
 def test_validation_failure_auto_rollbacks_exit_7(tmp_path: Path) -> None:
     fs, cfg, home = make_env(tmp_path)
     conf = home / ".config/hypr/hyprland.conf"
-
-    from rice.core.runner import RunResult
 
     def script(args: list[str]) -> RunResult:
         joined = " ".join(args)
@@ -157,8 +158,9 @@ def test_validation_failure_auto_rollbacks_exit_7(tmp_path: Path) -> None:
         return RunResult(args=args, returncode=0)
 
     with pytest.raises(ValidationError_) as excinfo:
-        run_protected_update(fs=fs, cfg=cfg, runner=FakeCommandRunner(script=script), home=home,
-                             interactive=False)
+        run_protected_update(
+            fs=fs, cfg=cfg, runner=FakeCommandRunner(script=script), home=home, interactive=False
+        )
 
     assert excinfo.value.exit_code == 7
     assert "@144" in conf.read_text()  # rolled back to snapshot (FR-024)
@@ -174,7 +176,11 @@ def test_conflict_abort_rolls_back_exit_6(tmp_path: Path) -> None:
     runner = FakeCommandRunner(script=script_apt(on_upgrade=clobber))
     with pytest.raises(ConflictError) as excinfo:
         run_protected_update(
-            fs=fs, cfg=cfg, runner=runner, home=home, interactive=False,
+            fs=fs,
+            cfg=cfg,
+            runner=runner,
+            home=home,
+            interactive=False,
             decide=lambda _f: Action.ABORT,
         )
 
@@ -209,7 +215,7 @@ def test_pending_recovery_applied_and_idempotent(tmp_path: Path) -> None:
 
 def store_journal_setup(fs: Filesystem, cfg: RiceConfig, home: Path) -> None:
     """Craft an interrupted UPDATING transaction referencing a real snapshot."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from rice.core.snapshot import SnapshotStore
     from rice.core.state import TransactionState
@@ -219,7 +225,7 @@ def store_journal_setup(fs: Filesystem, cfg: RiceConfig, home: Path) -> None:
     (home / ".config/hypr/hyprland.conf").write_text("monitor=BROKEN\n")
 
     journal = TransactionJournal(fs, cfg.data_dir)
-    rec = journal.begin(f"{datetime.now(timezone.utc):%Y%m%d-%H%M%S}")
+    rec = journal.begin(f"{datetime.now(UTC):%Y%m%d-%H%M%S}")
     journal.record("snapshot_id", snap.timestamp)
     journal.set_state(TransactionState.UPDATING)
     del rec

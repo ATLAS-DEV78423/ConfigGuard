@@ -78,9 +78,7 @@ class CommandRunner:
             raise RiceError(f"command failed ({result.returncode}): {' '.join(result.args)}")
         return result
 
-    def capture(
-        self, args: list[str], *, timeout: float | None = None
-    ) -> RunResult:
+    def capture(self, args: list[str], *, timeout: float | None = None) -> RunResult:
         """Run and collect output; never raises for non-zero exits."""
         return self.run(args, check=False, timeout=timeout)
 

@@ -15,7 +15,7 @@ import signal
 from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from rice.core.config import RiceConfig, protected_paths
@@ -86,6 +86,7 @@ class TransactionLock:
 def signal_safety():  # type: ignore[no-untyped-def]
     """SIGINT/SIGTERM/SIGHUP -> clean unwind. Atomic writes + persisted journal
     mean an interrupt at ANY point leaves recoverable state (FR-031)."""
+
     def handler(signum: int, _frame: object) -> None:
         log.warning("received signal %d; unwinding cleanly", signum)
         raise _Interrupted(130)
@@ -201,7 +202,7 @@ def run_protected_update(
     store = SnapshotStore(fs, cfg.data_dir, home)
     journal = TransactionJournal(fs, cfg.data_dir)
     det = Detector(fs, home, runner)
-    txn_id = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    txn_id = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
 
     if dry_run:
         report = preflight(det, cfg, AptPackageManager.detect(runner))

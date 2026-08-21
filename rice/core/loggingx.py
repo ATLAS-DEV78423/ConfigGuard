@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from rice.core.fs import Filesystem
@@ -58,7 +58,7 @@ def setup_logging(data_dir: Path, *, verbose: bool = False, quiet: bool = False)
     log_dir = data_dir / "logs"
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
-        name = f"rice-{datetime.now(timezone.utc).strftime('%Y%m%d')}.log"
+        name = f"rice-{datetime.now(UTC).strftime('%Y%m%d')}.log"
         fh = logging.FileHandler(log_dir / name, encoding="utf-8")
         fh.setFormatter(fmt)
         root.addHandler(fh)

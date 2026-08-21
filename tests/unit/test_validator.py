@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 from rice.core.fs import Filesystem
@@ -53,8 +52,6 @@ def test_hyprland_reload_failure_counts_as_failure(tmp_path: Path) -> None:
             return RunResult(args=args, returncode=0)
         return RunResult(args=["hyprctl", "reload"], returncode=1, stderr="syntax error")
 
-    v = make_validator(
-        tmp_path, FakeCommandRunner(script=script), ["hyprland"]
-    )
+    v = make_validator(tmp_path, FakeCommandRunner(script=script), ["hyprland"])
     failures = Validator.failures(v.validate_all(["hyprland"]))
     assert len(failures) == 1 and failures[0].app == "hyprland"

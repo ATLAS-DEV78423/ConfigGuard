@@ -12,9 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from rice.core.fs import Filesystem, canonicalize
+from rice.core.runner import CommandRunner
 from rice.integrators import INTEGRATOR_CLASSES
 from rice.integrators.common import DesktopIntegrator
-from rice.core.runner import CommandRunner
 
 SUPPORTED_DISTROS = frozenset({"ubuntu", "debian"})
 DEBIAN_LIKE = frozenset({"debian"})

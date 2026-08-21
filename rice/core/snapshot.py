@@ -15,11 +15,11 @@ import json
 import logging
 import socket
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from rice.core.errors import SnapshotError
-from rice.core.fs import Filesystem, FileMeta, canonicalize, is_within, require_within
+from rice.core.fs import FileMeta, Filesystem, canonicalize, is_within, require_within
 
 log = logging.getLogger("rice.snapshot")
 
@@ -30,7 +30,7 @@ SPACE_MARGIN = 1.1
 
 def snapshot_id_now() -> str:
     """UTC timestamp id, filesystem-safe: 2026-08-21T12-04-33Z."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%SZ")
 
 
 @dataclass(frozen=True)
@@ -146,7 +146,7 @@ class SnapshotStore:
             manifest.files = [
                 ManifestEntry(
                     rel_path=src.relative_to(self.home).as_posix(),
-                    meta=meta,
+                    meta=sources[src],
                     backup_rel_path=f"files/{src.relative_to(self.home).as_posix()}",
                 )
                 for src in sorted(sources)
@@ -181,14 +181,19 @@ class SnapshotStore:
             )
         self.write_manifest(dest_dir, manifest)
         self.verify(snap_id)  # FR-001/002: no update proceeds on unverified snapshot
-        log.info("snapshot %s created (%d files)%s", snap_id, len(manifest.files),
-                 " [pinned]" if pinned else "")
+        log.info(
+            "snapshot %s created (%d files)%s",
+            snap_id,
+            len(manifest.files),
+            " [pinned]" if pinned else "",
+        )
         return manifest
 
     def write_manifest(self, dir_path: Path, manifest: SnapshotManifest) -> None:
         self._fs.ensure_dir(dir_path)
-        self._fs.write_atomically(dir_path / "manifest.json",
-                                  json.dumps(manifest.to_json(), indent=2).encode())
+        self._fs.write_atomically(
+            dir_path / "manifest.json", json.dumps(manifest.to_json(), indent=2).encode()
+        )
         metadata = {
             "id": manifest.timestamp,
             "created_at": manifest.timestamp,
@@ -286,7 +291,7 @@ class SnapshotStore:
 
     # -- listing / lifecycle --------------------------------------------------
 
-    def list(self) -> list[SnapshotManifest]:
+    def list_all(self) -> list[SnapshotManifest]:
         root = self.snapshots_root()
         if not root.is_dir():
             return []
@@ -299,13 +304,13 @@ class SnapshotStore:
         return out
 
     def get(self, snap_id: str) -> SnapshotManifest:
-        for m in self.list():
+        for m in self.list_all():
             if m.timestamp == snap_id:
                 return m
         raise SnapshotError(f"unknown snapshot: {snap_id}")
 
     def latest(self) -> SnapshotManifest | None:
-        snaps = self.list()
+        snaps = self.list_all()
         return snaps[-1] if snaps else None
 
     def resolve_id(self, snap_id: str | None) -> str:
@@ -326,20 +331,16 @@ class SnapshotStore:
     def prune(self, *, dry_run: bool = False) -> list[str]:
         """Keep: all pinned + newest RETENTION_KEEP unpinned + anything within
         RETENTION_DAYS. Delete the rest. Returns removed ids."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now - timedelta(days=RETENTION_DAYS)
-        unpinned_newest_first = [
-            m for m in reversed(self.list()) if not m.pinned
-        ]
+        unpinned_newest_first = [m for m in reversed(self.list_all()) if not m.pinned]
         keep_ids: set[str] = set()
         for i, m in enumerate(unpinned_newest_first):
             created = _parse_ts(m.timestamp)
             if i < RETENTION_KEEP or created >= cutoff:
                 keep_ids.add(m.timestamp)
         doomed = [
-            m.timestamp
-            for m in self.list()
-            if not m.pinned and m.timestamp not in keep_ids
+            m.timestamp for m in self.list_all() if not m.pinned and m.timestamp not in keep_ids
         ]
         if not dry_run:
             for sid in doomed:
@@ -351,9 +352,7 @@ def _parse_ts(sid: str) -> datetime:
     """Parse an id like 2026-08-21T12-04-33Z, tolerating collision suffixes (-N)."""
     for candidate in (sid, sid.rsplit("-", 1)[0]):
         try:
-            return datetime.strptime(candidate, "%Y-%m-%dT%H-%M-%SZ").replace(
-                tzinfo=timezone.utc
-            )
+            return datetime.strptime(candidate, "%Y-%m-%dT%H-%M-%SZ").replace(tzinfo=UTC)
         except ValueError:
             continue
-    return datetime.min.replace(tzinfo=timezone.utc)
+    return datetime.min.replace(tzinfo=UTC)
