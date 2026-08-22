@@ -24,7 +24,6 @@ class FakeCommandRunner:
         self._results = list(results or [])
         self._script = script
         self.calls: list[list[str]] = []
-        self.envs: list[dict[str, str] | None] = []
 
     def run(
         self,
@@ -32,10 +31,8 @@ class FakeCommandRunner:
         *,
         check: bool = False,
         timeout: float | None = None,
-        env_extra: dict[str, str] | None = None,
     ) -> RunResult:
         self.calls.append(list(args))
-        self.envs.append(dict(env_extra) if env_extra else None)
         if self._script is not None:
             result = self._script(args)
         elif self._results:
@@ -49,11 +46,5 @@ class FakeCommandRunner:
     def capture(self, args: list[str], *, timeout: float | None = None) -> RunResult:
         return self.run(args, check=False, timeout=timeout)
 
-    def privileged(
-        self,
-        args: list[str],
-        *,
-        timeout: float | None = None,
-        env_extra: dict[str, str] | None = None,
-    ) -> RunResult:
-        return self.run(["sudo", *args], check=False, timeout=timeout, env_extra=env_extra)
+    def privileged(self, args: list[str], *, timeout: float | None = None) -> RunResult:
+        return self.run(["sudo", *args], check=False, timeout=timeout)

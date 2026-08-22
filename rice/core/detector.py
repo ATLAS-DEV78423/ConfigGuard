@@ -14,7 +14,6 @@ from pathlib import Path
 from rice.core.fs import Filesystem, canonicalize
 from rice.core.runner import CommandRunner
 from rice.integrators import INTEGRATOR_CLASSES
-from rice.integrators.common import DesktopIntegrator
 
 SUPPORTED_DISTROS = frozenset({"ubuntu", "debian"})
 DEBIAN_LIKE = frozenset({"debian"})
@@ -62,10 +61,6 @@ class Detector:
         self._environ = dict(environ) if environ is not None else dict(os.environ)
         self._os_release_path = os_release_path
         self._integrators = [cls(home, runner) for cls in INTEGRATOR_CLASSES]
-
-    @property
-    def integrators(self) -> list[DesktopIntegrator]:
-        return list(self._integrators)
 
     def system(self) -> Detection:
         distro_id = version_id = like_id = None

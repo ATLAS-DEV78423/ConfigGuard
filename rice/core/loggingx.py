@@ -1,8 +1,7 @@
 """Safe logging: redaction + file/stderr handlers.
 
-Rules (spec §25, SR-002): logs never contain config contents or secrets.
-``log_file_summary`` is the only sanctioned way to reference a config file in
-a log line: path, size, short hash — never bytes.
+Rules (spec §25, SR-002): logs never contain config contents or secrets —
+hashes/metadata only.
 """
 
 from __future__ import annotations
@@ -12,8 +11,6 @@ import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-
-from rice.core.fs import Filesystem
 
 _SECRET_RE = re.compile(
     r"(?i)(?<![A-Za-z])(password|passwd|token|secret|api[_-]?key|auth|credential)s?"
@@ -77,13 +74,3 @@ def setup_logging(data_dir: Path, *, verbose: bool = False, quiet: bool = False)
 
     # Third-party/typer noise stays quiet unless verbose.
     logging.getLogger("").setLevel(level if verbose else logging.WARNING)
-
-
-def log_file_summary(log: logging.Logger, fs: Filesystem, path: Path) -> None:
-    """Log path + size + 12-hex hash prefix of a file. NEVER its contents."""
-    try:
-        meta = fs.metadata(path)
-        digest = (meta.sha256 or fs.sha256(path))[:12]
-        log.info("file %s size=%d sha256=%s", path, meta.size, digest)
-    except OSError as exc:
-        log.info("file %s unreadable: %s", path, exc)

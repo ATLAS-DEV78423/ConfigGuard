@@ -157,7 +157,7 @@ def init(ctx: typer.Context) -> None:
             for d in dirs:
                 typer.echo(f"  {name:<10} {d}")
         if _confirm("Protect all detected configs?", c):
-            protected.update({name: dirs for name, dirs in detected})
+            protected.update(detected)
         elif not c.non_interactive:
             raw = typer.prompt("Numbers to EXCLUDE (comma-separated, blank=none)", default="")
             exclude = {s.strip() for s in raw.split(",") if s.strip()}

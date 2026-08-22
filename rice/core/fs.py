@@ -90,12 +90,6 @@ class Filesystem:
     def exists(self, path: Path) -> bool:
         return os.path.lexists(path)
 
-    def is_symlink(self, path: Path) -> bool:
-        return os.path.islink(path)
-
-    def readlink(self, path: Path) -> str:
-        return os.readlink(path)
-
     def metadata(self, path: Path) -> FileMeta:
         """lstat-based metadata; describes symlinks without following them."""
         return FileMeta.from_stat(os.lstat(path), path)
@@ -171,9 +165,7 @@ class Filesystem:
         shutil.chown(path, user=uid, group=gid)
 
     def utime(self, path: Path, mtime_ns: int) -> None:
-        atime = int(mtime_ns // 1_000_000_000)
-        ns = mtime_ns % 1_000_000_000
-        os.utime(path, ns=(atime * 1_000_000_000 + ns,) * 2)
+        os.utime(path, ns=(mtime_ns, mtime_ns))
 
     # ---- internals --------------------------------------------------------
 

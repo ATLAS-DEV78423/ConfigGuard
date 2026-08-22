@@ -50,7 +50,6 @@ class Resolution:
     used_new: int = 0
     unchanged: int = 0
     restored_missing: int = 0
-    conflicts_resolved: int = 0
 
 
 Decider = Callable[[Finding], Action]
@@ -144,10 +143,7 @@ class Reconciler:
                 else:  # KEEP_MINE
                     self._store.restore_entry(snap_id, entry)
                     record["action"] = "keep-mine"
-                    if finding.verdict is Verdict.TYPE_CHANGED:
-                        resolution.conflicts_resolved += 1
-                    else:
-                        resolution.kept_mine += 1
+                    resolution.kept_mine += 1
                 log.info(
                     "decision %s: %s (%s)", entry.rel_path, record["action"], finding.verdict.value
                 )

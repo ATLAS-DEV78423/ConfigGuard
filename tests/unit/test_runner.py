@@ -38,22 +38,6 @@ def test_privileged_prepends_sudo() -> None:
     assert fake.calls[0][-2:] == ["apt", "update"]
 
 
-def test_env_extra_merged(monkeypatch: pytest.MonkeyPatch) -> None:
-    from rice.core.runner import CommandRunner
-
-    seen: dict[str, Any] = {}
-
-    def fake_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        seen.update(kwargs)
-        seen["args"] = args
-        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-    CommandRunner().run(["apt", "upgrade", "-y"], env_extra={"DEBIAN_FRONTEND": "noninteractive"})
-    assert seen["env"]["DEBIAN_FRONTEND"] == "noninteractive"
-    assert seen.get("shell") is False
-
-
 def test_check_raises_rice_error() -> None:
     fake = FakeCommandRunner(results=[RunResult(args=["x"], returncode=1)])
     with pytest.raises(RiceError):

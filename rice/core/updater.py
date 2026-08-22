@@ -12,10 +12,11 @@ import fcntl
 import logging
 import os
 import signal
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from rice.core.config import RiceConfig, protected_paths
 from rice.core.detector import Detector
@@ -86,7 +87,7 @@ class TransactionLock:
 
 
 @contextmanager
-def signal_safety():  # type: ignore[no-untyped-def]
+def signal_safety() -> Iterator[None]:
     """SIGINT/SIGTERM/SIGHUP -> clean unwind. Atomic writes + persisted journal
     mean an interrupt at ANY point leaves recoverable state (FR-031)."""
 
@@ -94,7 +95,7 @@ def signal_safety():  # type: ignore[no-untyped-def]
         log.warning("received signal %d; unwinding cleanly", signum)
         raise SystemExit(130)
 
-    installed: list[tuple[int, object]] = []
+    installed: list[tuple[int, Any]] = []
     for sig_name in ("SIGINT", "SIGTERM", "SIGHUP"):
         sig = getattr(signal, sig_name, None)
         if sig is None:
@@ -121,8 +122,6 @@ def preflight(
     det: Detector,
     cfg: RiceConfig | None,
     pm_present: bool,
-    *,
-    need_pm: bool = True,
 ) -> list[str]:
     """Return problems; empty list == good to proceed."""
     problems: list[str] = []
@@ -140,7 +139,7 @@ def preflight(
             problems.append("none of the protected paths exist")
         elif missing:
             log.warning("%d protected path(s) missing and will be skipped", len(missing))
-    if need_pm and not pm_present:
+    if not pm_present:
         problems.append("apt not found on this system")
     return problems
 
@@ -193,7 +192,6 @@ def run_protected_update(
     interactive: bool,
     dry_run: bool = False,
     decide: Callable[[Finding], Action] | None = None,
-    on_decision: Callable[[dict], None] | None = None,
     ask_rollback: Callable[[list], bool] | None = None,
 ) -> int:
     """Full PREPARE->...->COMMITTED transaction. Returns process exit code."""
@@ -245,7 +243,7 @@ def run_protected_update(
         reconciler = Reconciler(fs, store)
 
         try:
-            resolution = reconciler.resolve(manifest.timestamp, decide or _keep_mine, on_decision)
+            resolution = reconciler.resolve(manifest.timestamp, decide or _keep_mine)
         except ConflictAborted as aborted:
             journal.record("decisions", {"path": aborted.finding.entry.rel_path, "action": "abort"})
             journal.set_state(TransactionState.CONFLICT)

@@ -6,7 +6,6 @@ strings. ``privileged()`` prefixes sudo; rice never sees or stores passwords.
 
 from __future__ import annotations
 
-import os
 import subprocess
 from dataclasses import dataclass, field
 
@@ -39,13 +38,9 @@ class CommandRunner:
         *,
         check: bool = False,
         timeout: float | None = None,
-        env_extra: dict[str, str] | None = None,
     ) -> RunResult:
         if not isinstance(args, list) or not all(isinstance(a, str) for a in args):
             raise TypeError("args must be a list[str] (never a shell string)")
-        env: dict[str, str] | None = None
-        if env_extra:
-            env = {**os.environ, **env_extra}
         try:
             proc = subprocess.run(  # noqa: S603 - argv list, no shell, by design
                 args,
@@ -53,7 +48,6 @@ class CommandRunner:
                 text=True,
                 shell=False,
                 timeout=timeout,
-                env=env,
                 check=False,
             )
             result = RunResult(
@@ -81,12 +75,6 @@ class CommandRunner:
         """Run and collect output; never raises for non-zero exits."""
         return self.run(args, check=False, timeout=timeout)
 
-    def privileged(
-        self,
-        args: list[str],
-        *,
-        timeout: float | None = None,
-        env_extra: dict[str, str] | None = None,
-    ) -> RunResult:
+    def privileged(self, args: list[str], *, timeout: float | None = None) -> RunResult:
         """Run under sudo. Used ONLY for the package-manager invocation."""
-        return self.run(["sudo", *args], check=False, timeout=timeout, env_extra=env_extra)
+        return self.run(["sudo", *args], check=False, timeout=timeout)

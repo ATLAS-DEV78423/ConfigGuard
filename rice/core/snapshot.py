@@ -50,21 +50,7 @@ class SnapshotManifest:
     files: list[ManifestEntry] = field(default_factory=list)
 
     def to_json(self) -> dict:
-        return {
-            "timestamp": self.timestamp,
-            "host": self.host,
-            "desktop": self.desktop,
-            "packages_upgraded": self.packages_upgraded,
-            "pinned": self.pinned,
-            "files": [
-                {
-                    "rel_path": e.rel_path,
-                    "backup_rel_path": e.backup_rel_path,
-                    "meta": asdict(e.meta),
-                }
-                for e in self.files
-            ],
-        }
+        return asdict(self)
 
     @classmethod
     def from_json(cls, raw: dict) -> SnapshotManifest:
