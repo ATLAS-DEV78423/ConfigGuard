@@ -27,7 +27,7 @@ class WofiIntegrator(DesktopIntegrator):
 
     def validate(self, fs: Filesystem) -> ValidationResult:
         for binary in ("wofi", "rofi"):
-            probe = self.runner.capture([binary, "--version"], timeout=10)
+            probe = self.runner.run([binary, "--version"], timeout=10)
             if probe.ok:
                 return ValidationResult(self.name, True, f"{binary} present; config not executed")
         return ValidationResult(self.name, None, "manual check needed (launcher not installed)")

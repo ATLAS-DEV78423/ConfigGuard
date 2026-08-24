@@ -24,46 +24,32 @@ _ENV = ["env", "DEBIAN_FRONTEND=noninteractive"]
 class AptPackageManager(PackageManager):
     name = "apt"
 
-    def __init__(self) -> None:
-        self._last: UpdateResult | None = None
-
     @classmethod
     def detect(cls, runner: CommandRunner) -> bool:
-        return runner.capture(["apt", "--version"], timeout=15).ok
+        return runner.run(["apt", "--version"], timeout=15).ok
 
     @staticmethod
     def _lock_held(runner: CommandRunner) -> bool:
         """fuser exit 0 == some process holds the lock. fuser missing (127)
         or other failures -> assume not held; apt will fail on its own."""
-        probe = runner.capture(["fuser", _DPKG_LOCK], timeout=10)
+        probe = runner.run(["fuser", _DPKG_LOCK], timeout=10)
         return probe.returncode == 0
 
     def update(self, runner: CommandRunner) -> UpdateResult:
         if self._lock_held(runner):
-            result = UpdateResult(
+            return UpdateResult(
                 success=False,
                 exit_code=100,
                 stderr_tail="another package manager is running "
                 f"({_DPKG_LOCK} held); rice will not bypass it",
             )
-            self._last = result
-            return result
 
         r1 = runner.privileged([*_ENV, "apt", "update"], timeout=None)
         if not r1.ok:
-            result = self._failure(r1)
-            self._last = result
-            return result
+            return self._failure(r1)
 
         r2 = runner.privileged([*_ENV, "apt", "upgrade", "-y"], timeout=None)
-        result = self._success(r2) if r2.ok else self._failure(r2, prior_stdout=r1.stdout)
-        self._last = result
-        return result
-
-    def changed_packages(self) -> list[str]:
-        if self._last is None:
-            return []
-        return sorted(set(_SETUP_RE.findall(self._last.stdout_tail)))
+        return self._success(r2) if r2.ok else self._failure(r2, prior_stdout=r1.stdout)
 
     # -- internals ----------------------------------------------------------
 

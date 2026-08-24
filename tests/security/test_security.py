@@ -121,8 +121,9 @@ def test_no_os_system_or_popen() -> None:
         assert "Popen" not in text, str(path)
 
 
-def test_sr002_reconcile_records_never_carry_config_contents(tmp_path: Path) -> None:
-    """Decision records carry paths+actions only — never file bytes (SR-002)."""
+def test_sr002_abort_surface_never_carries_config_contents(tmp_path: Path) -> None:
+    """The only data resolve() surfaces about a decision (the ConflictAborted
+    exception) carries the path — never file bytes (SR-002)."""
     fs = Filesystem()
     home = tmp_path / "home2"
     data = tmp_path / "data2"
@@ -133,11 +134,10 @@ def test_sr002_reconcile_records_never_carry_config_contents(tmp_path: Path) -> 
     snap = store.create([home / ".config/hypr"])
     (home / ".config/hypr/hyprland.conf").write_text("changed\n")
 
-    from rice.core.reconciler import Action, Reconciler
+    from rice.core.reconciler import Action, ConflictAborted, Reconciler
 
-    seen: list[dict] = []
-    Reconciler(fs, store).resolve(
-        snap.timestamp, lambda _f: Action.KEEP_MINE, on_decision=seen.append
-    )
-    blob = repr(seen)
+    with pytest.raises(ConflictAborted) as excinfo:
+        Reconciler(fs, store).resolve(snap.timestamp, lambda _f: Action.ABORT)
+    blob = str(excinfo.value)
+    assert "hyprland.conf" in blob
     assert "hunter2" not in blob and "monitor" not in blob

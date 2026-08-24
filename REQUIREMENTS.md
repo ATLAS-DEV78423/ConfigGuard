@@ -133,8 +133,9 @@ Rice MUST provide machine-readable `--json` output for `status`, `diff`,
 `snapshots list`, `snapshots show`, `doctor`.
 
 **FR-034**  
-Rice MUST provide shell completion scripts for bash, zsh, fish via
-`rice completion <shell>`.
+Rice MUST provide shell completion scripts for bash, zsh, fish via the CLI
+framework's built-in mechanism (`rice --install-completion` /
+`rice --show-completion <shell>`).
 
 ---
 

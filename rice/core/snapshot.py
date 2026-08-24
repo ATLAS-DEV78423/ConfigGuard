@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import socket
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -147,17 +147,8 @@ class SnapshotStore:
                 self._fs.symlink(meta.symlink_target or "", target)
             else:
                 self._fs.copy(src, target)
-            meta = FileMeta(  # re-hash source AFTER copy for manifest truth
-                path=meta.path,
-                type=meta.type,
-                mode=meta.mode,
-                uid=meta.uid,
-                gid=meta.gid,
-                size=meta.size,
-                mtime_ns=meta.mtime_ns,
-                sha256=self._fs.sha256(src) if meta.type == "file" else None,
-                symlink_target=meta.symlink_target,
-            )
+            # re-hash source AFTER copy for manifest truth
+            meta = replace(meta, sha256=self._fs.sha256(src) if meta.type == "file" else None)
             manifest.files.append(
                 ManifestEntry(rel_path=rel, meta=meta, backup_rel_path=backup_rel)
             )
@@ -175,15 +166,6 @@ class SnapshotStore:
         self._fs.ensure_dir(dir_path)
         self._fs.write_atomically(
             dir_path / "manifest.json", json.dumps(manifest.to_json(), indent=2).encode()
-        )
-        metadata = {
-            "id": manifest.timestamp,
-            "created_at": manifest.timestamp,
-            "file_count": len(manifest.files),
-            "pinned": manifest.pinned,
-        }
-        self._fs.write_atomically(
-            dir_path / "metadata.json", json.dumps(metadata, indent=2).encode()
         )
 
     def _collect_sources(self, protected: list[Path]) -> dict[Path, FileMeta]:
@@ -245,20 +227,29 @@ class SnapshotStore:
         return [e.rel_path for e in manifest.files]
 
     def restore_entry(self, snap_id: str, entry: ManifestEntry) -> None:
-        """Copy ONE tracked file back from a verified snapshot. Idempotent."""
+        """Copy ONE tracked file back from a verified snapshot. Idempotent.
+
+        Order matters: validate safety FIRST (an unsafe entry touches nothing),
+        then clear any conflicting live entry (file/link/dangling link — a real
+        directory is refused, never removed), then write.
+        """
         d = self._dir_for(snap_id)
         backup = d / entry.backup_rel_path
         live = self.home / entry.rel_path
         require_within(live.resolve(), [self.home])
         if entry.meta.type == "symlink":
             target = entry.meta.symlink_target or ""
-            resolved = canonicalize(live.parent / target)
-            if not is_within(resolved, [self.home]):
+            if not is_within(canonicalize(live.parent / target), [self.home]):
                 log.warning("skip unsafe symlink %s -> %s", live, target)
                 return
-            if live.exists() and not live.is_symlink():
-                self._fs.remove(live)
-            self._fs.symlink(target, live)
+
+        if self._fs.exists(live):  # lexists: true even for broken symlinks
+            if self._fs.metadata(live).type == "dir":
+                raise SnapshotError(f"refusing to restore over directory {live}")
+            self._fs.remove(live)
+
+        if entry.meta.type == "symlink":
+            self._fs.symlink(entry.meta.symlink_target or "", live)
         elif entry.meta.type == "file":
             self._fs.copy(backup, live)
             self._apply_meta(live, entry.meta)

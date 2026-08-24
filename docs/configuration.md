@@ -4,15 +4,15 @@
 
 ```toml
 [rice]
-data_dir = "/home/you/.local/share/rice"
+data_dir = "~/.local/share/rice"
 version = "0.1.0"
 
 [protected]
-hyprland = ["/home/you/.config/hypr"]
-waybar   = ["/home/you/.config/waybar"]
-kitty    = ["/home/you/.config/kitty"]
-wofi     = ["/home/you/.config/wofi", "/home/you/.config/rofi"]
-extra    = ["/home/you/.config/user-paths"]
+hyprland = ["~/.config/hypr"]
+waybar   = ["~/.config/waybar"]
+kitty    = ["~/.config/kitty"]
+wofi     = ["~/.config/wofi", "~/.config/rofi"]
+extra    = ["~/.config/user-paths"]
 ```
 
 ## Rules

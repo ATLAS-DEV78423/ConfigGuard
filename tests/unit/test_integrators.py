@@ -122,6 +122,24 @@ def test_waybar_validate_parses_conflicting_fixture(tmp_path: Path) -> None:
     assert "parse ok" in result.message
 
 
+def test_waybar_jsonc_beyond_stripper_is_manual_check_not_failure(
+    tmp_path: Path,
+) -> None:
+    """B3 regression: the comment stripper is deliberately partial (inline
+    comments, trailing commas). Parse failures must yield ok=None, never a
+    hard failure that triggers spurious rollback offers."""
+    home = make_home(tmp_path, ["waybar"])
+    conf = home / ".config" / "waybar" / "config"
+    conf.write_text('{"a": 1, // trailing inline comment\n}')
+
+    def script(args: list[str]) -> RunResult:
+        return RunResult(args=args, returncode=1)
+
+    result = WaybarIntegrator(home, FakeCommandRunner(script=script)).validate(Filesystem())
+    assert result.ok is None
+    assert "manual check needed" in result.message
+
+
 def test_validators_never_mutate_configs(tmp_path: Path) -> None:
     home = make_home(tmp_path, ["waybar"])
     conf = home / ".config" / "waybar" / "config"

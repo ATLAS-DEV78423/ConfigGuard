@@ -17,6 +17,8 @@ _SECRET_RE = re.compile(
     r"(\s*[=:]\s*)(\S+)"
 )
 
+_configured = False
+
 
 def redact(text: str) -> str:
     """Mask values assigned to secret-looking keys. Keeps keys for debuggability.
@@ -42,23 +44,26 @@ class _RedactFilter(logging.Filter):
 
 
 def setup_logging(data_dir: Path, *, verbose: bool = False, quiet: bool = False) -> None:
-    """Configure root logger: stderr stream + daily file under data_dir/logs.
+    """Configure the "rice" logger: stderr stream + daily file under data_dir/logs.
 
     Levels: --verbose DEBUG, --quiet WARNING, default INFO. Idempotent: safe to
     call twice without duplicating handlers.
+
+    The redaction filter lives on each HANDLER (SR-002): logger-level filters
+    do NOT apply to records propagated from child loggers like rice.snapshot,
+    handler-level filters apply to everything that reaches output.
     """
+    global _configured
     level = logging.DEBUG if verbose else logging.WARNING if quiet else logging.INFO
     root = logging.getLogger("rice")
     root.setLevel(level)
-    if getattr(root, "_rice_configured", False):
+    if _configured:
         return
-    root._rice_configured = True  # type: ignore[attr-defined]
+    _configured = True
 
     fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
-    # Filter lives on the logger so every downstream handler sees redacted text.
-    root.addFilter(_RedactFilter())
-
     stream = logging.StreamHandler(sys.stderr)
+    stream.addFilter(_RedactFilter())
     stream.setFormatter(fmt)
     root.addHandler(stream)
 
@@ -67,6 +72,7 @@ def setup_logging(data_dir: Path, *, verbose: bool = False, quiet: bool = False)
         log_dir.mkdir(parents=True, exist_ok=True)
         name = f"rice-{datetime.now(UTC).strftime('%Y%m%d')}.log"
         fh = logging.FileHandler(log_dir / name, encoding="utf-8")
+        fh.addFilter(_RedactFilter())
         fh.setFormatter(fmt)
         root.addHandler(fh)
     except OSError:

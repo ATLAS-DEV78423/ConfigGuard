@@ -37,7 +37,3 @@ class PackageManager(ABC):
     @abstractmethod
     def update(self, runner: CommandRunner) -> UpdateResult:
         """Run the update. Conservative orchestration; never bypass locks."""
-
-    @abstractmethod
-    def changed_packages(self) -> list[str]:
-        """Packages touched by the most recent update() on THIS instance."""

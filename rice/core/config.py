@@ -36,7 +36,7 @@ def config_path(home: Path | None = None) -> Path:
     return home / ".config" / "rice" / "config.toml"
 
 
-def _expand(home: Path | None, value: str) -> Path:
+def expand_path(home: Path | None, value: str) -> Path:
     """Expand ~; anchor relative paths to home when a test home is injected.
 
     expanduser() is deliberately avoided: it reads the REAL $HOME, which would
@@ -69,13 +69,13 @@ def load_config(fs: Filesystem, home: Path | None = None) -> RiceConfig:
     data_dir_raw = rice_tbl.get("data_dir", DEFAULT_DATA_DIR)
     if not isinstance(data_dir_raw, str):
         raise ConfigError("[rice] data_dir must be a string")
-    data_dir = _expand(home, data_dir_raw)
+    data_dir = expand_path(home, data_dir_raw)
 
     protected: dict[str, list[Path]] = {}
     for app, entries in prot_tbl.items():
         if not isinstance(entries, list) or not all(isinstance(e, str) for e in entries):
             raise ConfigError(f"[protected] {app} must be a list of path strings")
-        protected[app] = [_expand(home, e) for e in entries]
+        protected[app] = [expand_path(home, e) for e in entries]
 
     return RiceConfig(
         data_dir=data_dir,
@@ -85,10 +85,23 @@ def load_config(fs: Filesystem, home: Path | None = None) -> RiceConfig:
 
 
 def save_config(cfg: RiceConfig, fs: Filesystem, home: Path | None = None) -> Path:
-    """Persist config atomically; returns the path written."""
+    """Persist config atomically; returns the path written.
+
+    Paths under home are stored in ``~/...`` form (spec §12); anything else
+    stays absolute. Paths are resolved() here, so callers should pass
+    canonical paths when home itself sits behind a symlink.
+    """
+    base = (home if home is not None else Path.home()).resolve()
+
+    def fmt(p: Path) -> str:
+        try:
+            return "~/" + p.resolve().relative_to(base).as_posix()
+        except ValueError:
+            return str(p)
+
     doc: dict[str, object] = {
-        "rice": {"data_dir": str(cfg.data_dir), "version": cfg.version},
-        "protected": {app: [str(p) for p in paths] for app, paths in sorted(cfg.protected.items())},
+        "rice": {"data_dir": fmt(cfg.data_dir), "version": cfg.version},
+        "protected": {app: [fmt(p) for p in paths] for app, paths in sorted(cfg.protected.items())},
     }
     path = config_path(home)
     fs.write_atomically(path, tomli_w.dumps(doc).encode("utf-8"))

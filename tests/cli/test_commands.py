@@ -29,15 +29,11 @@ def test_version_flag_prints_semver() -> None:
 
 
 def test_completion_bash_zsh_fish() -> None:
+    """FR-034: completion via Typer's built-in machinery (no custom command)."""
     for shell in ("bash", "zsh", "fish"):
-        result = run("completion", shell)
+        result = run("--show-completion", shell)
         assert result.exit_code == 0
-        assert "_RICE_COMPLETE=" in result.output
-
-
-def test_completion_unknown_shell_exit_2(fake_home: Path) -> None:
-    result = runner.invoke(app, ["completion", "tcsh"], catch_exceptions=False)
-    assert result.exit_code == 2
+        assert result.output.strip()
 
 
 # ---- init / config gate --------------------------------------------------------

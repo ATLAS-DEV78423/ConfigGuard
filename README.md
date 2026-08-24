@@ -30,7 +30,10 @@ rice restore              # restore latest snapshot manually
 
 `init`, `status`, `snapshot [--pin]`, `update`, `diff [SNAPSHOT]`,
 `restore [SNAPSHOT]`, `doctor [--fix]`, `snapshots list|show|delete|prune`,
-`completion bash|zsh|fish`, `version`.
+`version`.
+
+Shell completion (bash/zsh/fish) is built in via Typer:
+`rice --install-completion` / `rice --show-completion bash`.
 
 Global flags (place immediately after `rice`): `--version`, `-v/--verbose`,
 `--no-color`, `--quiet`, `--json`,

@@ -71,10 +71,6 @@ class CommandRunner:
             raise RiceError(f"command failed ({result.returncode}): {' '.join(result.args)}")
         return result
 
-    def capture(self, args: list[str], *, timeout: float | None = None) -> RunResult:
-        """Run and collect output; never raises for non-zero exits."""
-        return self.run(args, check=False, timeout=timeout)
-
     def privileged(self, args: list[str], *, timeout: float | None = None) -> RunResult:
         """Run under sudo. Used ONLY for the package-manager invocation."""
         return self.run(["sudo", *args], check=False, timeout=timeout)

@@ -7,7 +7,6 @@
 ├── snapshots/
 │   └── 2026-08-21T12-04-33Z/
 │       ├── manifest.json     # per-file metadata incl. SHA-256
-│       ├── metadata.json     # counts, pinned flag
 │       └── files/            # copied configs, home-relative structure
 ├── transactions/<txn>.json   # journals, deleted when finished
 ├── logs/rice-YYYYMMDD.log

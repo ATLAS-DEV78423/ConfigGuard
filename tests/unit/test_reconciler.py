@@ -84,21 +84,10 @@ def test_resolve_missing_current_auto_restores_without_decider(
     assert "144" in (home / ".config/hypr/hyprland.conf").read_text()
 
 
-def test_resolve_abort_raises_conflict_aborted_and_records(env: tuple) -> None:
+def test_resolve_abort_raises_conflict_aborted(env: tuple) -> None:
     rec, store, fs, home, sid = env
     (home / ".config/hypr/hyprland.conf").write_text("monitor=DP-1@165\n")
-    seen: list[dict] = []
     with pytest.raises(ConflictAborted):
-        rec.resolve(sid, lambda _f: Action.ABORT, on_decision=seen.append)
-    # abort decision was journaled before raising
-    assert any(a.get("action") == "abort" for a in seen)
-
-
-def test_decision_records_metadata_only(env: tuple) -> None:
-    """Decision records carry paths/actions — never config contents (SR-002)."""
-    rec, store, fs, home, sid = env
-    (home / ".config/hypr/hyprland.conf").write_text("SECRET-LIKE CONTENT monitor=@165\n")
-    seen: list[dict] = []
-    rec.resolve(sid, lambda _f: Action.KEEP_MINE, on_decision=seen.append)
-    blob = str(seen)
-    assert "SECRET-LIKE" not in blob
+        rec.resolve(sid, lambda _f: Action.ABORT)
+    # current file untouched by the aborted resolve
+    assert "@165" in (home / ".config/hypr/hyprland.conf").read_text()

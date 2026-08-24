@@ -17,7 +17,7 @@ from typing import Any, TypeVar
 import typer
 
 from rice import __version__
-from rice.core.config import RiceConfig, load_config, protected_paths, save_config
+from rice.core.config import RiceConfig, expand_path, load_config, protected_paths, save_config
 from rice.core.detector import Detector
 from rice.core.errors import RecoveryError, RiceError, UsageError, ValidationError_
 from rice.core.fs import Filesystem
@@ -169,10 +169,7 @@ def init(ctx: typer.Context) -> None:
     if not c.non_interactive:
         raw = typer.prompt("Additional paths to protect (comma-separated, blank=none)", default="")
         for part in (s.strip() for s in raw.split(",") if s.strip()):
-            p = Path(part).expanduser()
-            if not p.is_absolute():
-                p = _home() / p
-            resolved = p.resolve()
+            resolved = expand_path(_home(), part).resolve()
             if not resolved.is_relative_to(_home().resolve()):
                 raise UsageError(f"refusing extra path outside home: {resolved}")
             extra.append(resolved)
@@ -364,13 +361,6 @@ def snapshots_prune(ctx: typer.Context) -> None:
         typer.echo("Nothing to prune.")
 
 
-COMPLETION_SNIPPETS = {
-    "bash": 'eval "$(_RICE_COMPLETE=bash_source rice)"',
-    "zsh": 'eval "$(_RICE_COMPLETE=zsh_source rice)"',
-    "fish": "_RICE_COMPLETE=fish_source rice | source",
-}
-
-
 @app.command()
 @safe
 def update(ctx: typer.Context) -> None:
@@ -536,19 +526,6 @@ def doctor(
     unresolved = [ch for ch in checks if not ch["ok"]]
     if unresolved:
         raise ValidationError_("; ".join(f"{ch['name']}: {ch['message']}" for ch in unresolved))
-
-
-@app.command()
-@safe
-def completion(
-    shell: str = typer.Argument(..., help="bash, zsh, or fish"),
-) -> None:
-    """Print shell completion setup (add to your shell rc file)."""
-    snippet = COMPLETION_SNIPPETS.get(shell)
-    if snippet is None:
-        raise UsageError(f"unknown shell '{shell}': expected bash, zsh, or fish")
-    typer.echo(f"# rice completion for {shell}")
-    typer.echo(snippet)
 
 
 if __name__ == "__main__":

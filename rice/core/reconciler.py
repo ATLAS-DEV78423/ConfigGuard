@@ -109,45 +109,29 @@ class Reconciler:
 
     # -- resolution ---------------------------------------------------------
 
-    def resolve(
-        self,
-        snap_id: str,
-        decide: Decider,
-        on_decision: Callable[[dict[str, str]], None] | None = None,
-    ) -> Resolution:
+    def resolve(self, snap_id: str, decide: Decider) -> Resolution:
         self._store.verify(snap_id)  # integrity gate (SR-005)
         resolution = Resolution()
         for finding in self.analyze(snap_id):
             entry = finding.entry
-            record: dict[str, str] = {"path": entry.rel_path, "verdict": finding.verdict.value}
 
             if finding.verdict is Verdict.UNCHANGED:
                 resolution.unchanged += 1
-                record["action"] = "skip"
 
             elif finding.verdict is Verdict.MISSING_CURRENT:
                 self._store.restore_entry(snap_id, entry)
                 resolution.restored_missing += 1
-                record["action"] = "auto-restore"
 
             else:  # CHANGED or TYPE_CHANGED — a real decision point
                 action = decide(finding)
                 if action is Action.ABORT:
-                    record["action"] = "abort"
-                    if on_decision:
-                        on_decision(record)
                     raise ConflictAborted(finding)
                 if action is Action.USE_NEW:
                     resolution.used_new += 1
-                    record["action"] = "use-new"  # leave current file as-is
                 else:  # KEEP_MINE
                     self._store.restore_entry(snap_id, entry)
-                    record["action"] = "keep-mine"
                     resolution.kept_mine += 1
                 log.info(
-                    "decision %s: %s (%s)", entry.rel_path, record["action"], finding.verdict.value
+                    "decision %s: %s (%s)", entry.rel_path, action.value, finding.verdict.value
                 )
-
-            if on_decision:
-                on_decision(record)
         return resolution

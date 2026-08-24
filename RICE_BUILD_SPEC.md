@@ -213,7 +213,6 @@ class TransactionJournal:
 class PackageManager(ABC):
     def detect() -> bool
     def update(self, runner) -> UpdateResult   # runs sudo apt update && upgrade
-    def changed_packages(self) -> list[str]
 
 # integrators/common.py
 class DesktopIntegrator(ABC):
@@ -241,7 +240,6 @@ class DesktopIntegrator(ABC):
 ├── snapshots/
 │   └── 2026-08-21T12-04-33Z/
 │       ├── manifest.json
-│       ├── metadata.json
 │       └── files/
 │           ├── .config/hypr/hyprland.conf
 │           ├── .config/waybar/config
@@ -298,7 +296,7 @@ type. A path outside `config.toml`'s scope is never touched by restore.
 
 ## 15. Package-Manager Interface
 
-`PackageManager` ABC exposes `update()` and `changed_packages()`. All
+`PackageManager` ABC exposes `update()`. All
 package-manager operations go through `CommandRunner.privileged()`. Rice
 orchestrates APT; it does NOT try to outsmart it.
 

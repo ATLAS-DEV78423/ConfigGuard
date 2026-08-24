@@ -113,6 +113,83 @@ def test_in_scope_symlink_recorded_and_restored(env: tuple[SnapshotStore, Path, 
     assert real.exists()
 
 
+def test_restore_replaces_broken_symlink(env: tuple[SnapshotStore, Path, Path]) -> None:
+    """B1 regression: live path is a DANGLING symlink. lexists must see it,
+    or os.symlink raises FileExistsError mid-restore."""
+    store, fs, home = env
+    real = home / ".config/hypr/theme.include"
+    real.write_text("col.active_border=0xff89b4fa\n")
+    link = home / ".config/hypr/current.conf"
+    link.symlink_to(real)
+    snap = store.create(protected(home))
+
+    # Now make the live entry a BROKEN symlink where the entry belongs.
+    link.unlink()
+    link.symlink_to(home / ".config/hypr/nowhere")
+    assert not link.exists() and link.is_symlink()
+
+    store.restore(snap.timestamp)  # used to crash with FileExistsError
+    assert link.is_symlink()
+    assert os.readlink(link) == str(real)
+
+
+def test_restore_refuses_directory_where_symlink_belongs(
+    env: tuple[SnapshotStore, Path, Path],
+) -> None:
+    """B5: a type flip to a real dir at a symlink entry's path is refused,
+    never rmtree'd."""
+    store, fs, home = env
+    real = home / ".config/hypr/theme.include"
+    real.write_text("x\n")
+    link = home / ".config/hypr/current.conf"
+    link.symlink_to(real)
+    snap = store.create(protected(home))
+
+    link.unlink()
+    link.mkdir()
+    (link / "precious").write_text("do-not-delete\n")
+
+    with pytest.raises(SnapshotError, match="directory"):
+        store.restore(snap.timestamp)
+    assert (link / "precious").exists()  # untouched
+
+
+def test_restore_file_entry_refuses_directory_too(env: tuple[SnapshotStore, Path, Path]) -> None:
+    """N1: dir guard applies to FILE entries as well — copy2 would otherwise
+    plant the backup INSIDE the user's folder and chmod the directory."""
+    store, fs, home = env
+    conf = home / ".config/hypr/hyprland.conf"
+    snap = store.create(protected(home))
+
+    conf.unlink()
+    conf.mkdir()
+    (conf / "precious").write_text("do-not-delete\n")
+
+    with pytest.raises(SnapshotError, match="directory"):
+        store.restore(snap.timestamp)
+    assert (conf / "precious").exists()  # untouched
+
+
+def test_restore_file_entry_replaces_symlink_not_target(
+    env: tuple[SnapshotStore, Path, Path],
+) -> None:
+    """N2: a live symlink at a file entry's path must be replaced by a real
+    file — copy2 through it would clobber whatever the link points at."""
+    store, fs, home = env
+    conf = home / ".config/hypr/hyprland.conf"
+    snap = store.create(protected(home))
+
+    decoy = home / ".config/hypr/decoy.txt"
+    decoy.write_text("keep-me\n")
+    conf.unlink()
+    conf.symlink_to(decoy)
+
+    store.restore(snap.timestamp)
+    assert not conf.is_symlink()  # link became a real file...
+    assert "@144" in conf.read_text()  # ...with snapshot content
+    assert decoy.read_text() == "keep-me\n"  # target untouched
+
+
 def test_delete_only_inside_snapshots_root(env: tuple[SnapshotStore, Path, Path]) -> None:
     store, fs, home = env
     with pytest.raises(ScopeViolation):

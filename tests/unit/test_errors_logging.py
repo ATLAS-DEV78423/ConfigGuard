@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -52,42 +54,55 @@ def test_redact_leaves_normal_text() -> None:
     assert redact(text) == text
 
 
-def test_setup_logging_levels(tmp_path: Path) -> None:
+def _reset_rice_logging() -> None:
+    """Fresh slate so setup_logging runs fully (guards + handlers cleared)."""
+    import rice.core.loggingx as loggingx
+
+    loggingx._configured = False
+    logger = logging.getLogger("rice")
+    for h in list(logger.handlers):
+        logger.removeHandler(h)
+
+
+@pytest.fixture()
+def clean_logging() -> Iterator[None]:
+    _reset_rice_logging()
+    yield
+    _reset_rice_logging()
+
+
+def test_setup_logging_levels(tmp_path: Path, clean_logging: None) -> None:
     logger = logging.getLogger("rice")
     for verbose, quiet, expected in [
         (True, False, logging.DEBUG),
         (False, True, logging.WARNING),
         (False, False, logging.INFO),
     ]:
-        logger._rice_configured = False  # type: ignore[attr-defined]
-        for h in list(logger.handlers):
-            logger.removeHandler(h)
+        _reset_rice_logging()
         setup_logging(tmp_path, verbose=verbose, quiet=quiet)
         assert logger.level == expected
-        assert getattr(logger, "_rice_configured", False)
 
 
-def test_setup_logging_idempotent(tmp_path: Path) -> None:
+def test_setup_logging_idempotent(tmp_path: Path, clean_logging: None) -> None:
     logger = logging.getLogger("rice")
-    logger._rice_configured = False  # type: ignore[attr-defined]
-    for h in list(logger.handlers):
-        logger.removeHandler(h)
     setup_logging(tmp_path)
     n = len(logger.handlers)
     setup_logging(tmp_path)
     assert len(logger.handlers) == n
 
 
-def test_redaction_filter_applies_to_logged_records(caplog: pytest.LogCaptureFixture) -> None:
-    log = logging.getLogger("rice")
-    old = log.filters[:]
-    try:
-        from rice.core.loggingx import _RedactFilter
+def test_redaction_applies_to_child_logger_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clean_logging: None
+) -> None:
+    """SR-002 mechanism check: records from CHILD loggers (rice.snapshot etc.)
+    must be redacted too — the filter lives on handlers (B2 regression)."""
+    import io
 
-        log.addFilter(_RedactFilter())
-        with caplog.at_level(logging.INFO, logger="rice"):
-            log.info("token=%s failed", "supersecret")
-        assert "supersecret" not in caplog.text
-        assert "<redacted>" in caplog.text
-    finally:
-        log.filters[:] = old
+    buf = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", buf)
+    setup_logging(tmp_path)
+    logging.getLogger("rice.snapshot").info("token=%s leaked", "supersecret")
+    for h in logging.getLogger("rice").handlers:
+        h.flush()
+    assert "supersecret" not in buf.getvalue()
+    assert "<redacted>" in buf.getvalue()

@@ -77,10 +77,6 @@ def test_upgrade_failure_is_reported_not_raised() -> None:
     assert "Sub-process failed" in result.stderr_tail
 
 
-def test_changed_packages_empty_before_any_update() -> None:
-    assert AptPackageManager().changed_packages() == []
-
-
 def test_looks_like_sudo_failure() -> None:
     sudo_fail = UpdateResult(success=False, exit_code=1, stderr_tail="sudo: a password is required")
     other_fail = UpdateResult(success=False, exit_code=100, stderr_tail="E: unable to fetch")

@@ -37,7 +37,8 @@ rice version     # prints rice x.y.z
 ## Shell completion (optional)
 
 ```bash
-rice completion bash >> ~/.bashrc   # or zsh / fish variants
+rice --install-completion            # for your current shell
+rice --show-completion bash >> ~/.bashrc   # or zsh / fish variants
 ```
 
 See [getting-started.md](getting-started.md) next.
