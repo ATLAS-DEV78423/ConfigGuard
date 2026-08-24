@@ -3,9 +3,9 @@
 **Goal:** Ship rice v1.0.0 — reviewed, CI-green, manually verified on real Linux
 desktops, packaged, and installed-from-artifact.
 
-**State of record:** commit `aeb96e8` on `master`. Three review rounds complete
-(18 findings closed). Static gates green locally. CI is RED on one stale test
-(see Phase 0). Nothing is released until every phase below is checked off.
+**State of record:** commit `bc651c3` on `master`. Three review rounds complete
+(18 findings closed). CI GREEN — all five jobs on run `32721099488`. Phase 0
+done; next: Phase 1 (real-Linux verification).
 
 **Ground rules:** `CLAUDE.md` governs everything below. V1 scope is locked —
 no new features while marching to release. Every behavior change needs a
@@ -16,49 +16,29 @@ suite-wide grep for old-contract assertions before push (lesson from the
 
 ## Phase 0 — Green CI *(blocking everything else)*
 
-**Status: OPEN** — run `32718882514` failed 3 jobs on one root cause.
+**Status: DONE** — two commits, one extra finding found by reading raw logs.
 
-- [ ] **0.1 Replace the stale waybar contract test.**
-      `tests/unit/test_validator.py:29-40` pins the pre-B3 behavior
-      (`ok is False`). Delete that test and insert:
+- [x] **0.1 Replace the stale waybar contract test.**
+      Done in `8b66634`: `tests/unit/test_validator.py` now pins
+      `ok=None` + "manual check needed" for strict-parse failure (B3 contract).
 
-```python
-def test_waybar_valid_json_ok_invalid_json_is_manual_check(tmp_path: Path) -> None:
-    """B3 contract: strict-parse failure is NOT proof of a broken config
-    (the stripper is deliberately partial) -> ok=None, never ok=False."""
-    home = tmp_path / "home"
-    wb = home / ".config" / "waybar"
-    wb.mkdir(parents=True)
-    (wb / "config").write_text('{"clock": {"format": "%H:%M"}}')
-    good = Validator(Filesystem(), FakeCommandRunner(), home).validate_all(["waybar"])
-    assert good[0].ok is True
+- [x] **0.2 Sweep for any other old-contract pins before pushing:**
+      Done in `8b66634`: remaining `ok is False` hits are all the hyprland
+      hard-failure contract (hyprctl reload), which B3 never changed. Zero
+      hits for removed APIs.
 
-    (wb / "config").write_text("{not json")
-    bad = Validator(Filesystem(), FakeCommandRunner(), home).validate_all(["waybar"])
-    assert bad[0].ok is None
-    assert "manual check needed" in bad[0].message
-```
+- [x] **0.3 Static gates:** ruff check / format / mypy clean.
 
-- [ ] **0.2 Sweep for any other old-contract pins before pushing:**
-
-```bash
-rg -n "ok is False|ok == False|\.ok\b.*False" tests/
-rg -n "changed_packages|on_decision|metadata\.json|capture\(" rice/ tests/
-```
-      Expected: no hits outside historical docs (`references/`, build-plan).
-
-- [ ] **0.3 Static gates:** `ruff check . && ruff format --check . && mypy rice`
-
-- [ ] **0.4 Commit (`test: pin B3 waybar contract in validator suite`), push,
-      confirm all four CI jobs green:
-
-```bash
-$env:GH_TOKEN="<token>"; gh run list --limit 1
-gh run view <run-id> --json jobs | ConvertFrom-Json | % { $_.jobs | % { "$($_.name) => $($_.conclusion)" } }
-```
-      Expected: `lint + format + types`, `unit/cli/security (ubuntu-latest)`,
-      `unit/cli/security (ubuntu-24.04)`, `integration + recovery`,
-      `Debian 13 (trixie)` all `success`.
+- [x] **0.4 Push + confirm CI green.** Took TWO commits:
+      - `8b66634` — stale-test fix: 4/5 green, but Debian trixie failed
+        `test_completion_bash_zsh_fish`. Raw log showed `--show-completion`
+        auto-detects the parent shell; the bare trixie container has none →
+        `Exit(1)`. (The old assertion was too weak to catch that Ubuntu jobs
+        were passing for the wrong reason too.)
+      - `bc651c3` — test now sets typer's own seam
+        `_TYPER_COMPLETE_TEST_DISABLE_SHELL_DETECTION=1` and asserts the
+        correct per-shell script fragment.
+      - Run `32721099488`: **all five jobs success.**
 
 ---
 
@@ -197,4 +177,4 @@ rice doctor             # clean, exit 0
 | Waybar JSONC stripper | full-line `//` only; parse fail = manual check | if false-manual rate annoys real configs |
 | `save_config` resolve symmetry | assumes canonical paths when home sits behind symlink | multi-user/network-home bug reports |
 | Logging global-state reset | single-process assumption | pytest-xdist adoption |
-| typer `--show-completion <shell>` | pinned by test; typer major bumps may shift arg order | typer upgrade |
+| typer `--show-completion <shell>` | test relies on `_TYPER_COMPLETE_TEST_DISABLE_SHELL_DETECTION` seam + per-shell script fragments | typer upgrade (seam renamed/removed) |
