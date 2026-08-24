@@ -3,9 +3,10 @@
 **Goal:** Ship rice v1.0.0 — reviewed, CI-green, manually verified on real Linux
 desktops, packaged, and installed-from-artifact.
 
-**State of record:** commit `bc651c3` on `master`. Three review rounds complete
-(18 findings closed). CI GREEN — all five jobs on run `32721099488`. Phase 0
-done; next: Phase 1 (real-Linux verification).
+**State of record:** Phase 0 DONE (CI green, all five jobs, run
+`32721099488`). Phase 2 DONE (hardening complete; wheel/sdist built).
+Phase 1 BLOCKED ON OWNER (execution deferred from this machine by owner).
+Phase 3 GATED on Phase 1. Three review rounds closed (18 findings).
 
 **Ground rules:** `CLAUDE.md` governs everything below. V1 scope is locked —
 no new features while marching to release. Every behavior change needs a
@@ -44,9 +45,15 @@ suite-wide grep for old-contract assertions before push (lesson from the
 
 ## Phase 1 — Real-Linux Verification *(CI cannot prove this part)*
 
+> **Status: BLOCKED ON OWNER** — owner explicitly deferred all execution
+> from this machine ("I will test later"). Instructions below are final and
+> paste-ready. Nothing in Phase 2/3 ships until these boxes are checked.
+
 > **Safety first:** `rice update` runs `sudo apt upgrade -y`. Do NOT first-run
 > it on your daily driver. Use a throwaway Ubuntu 24.04 VM or a fresh Debian 13
-> container/snapshot you can roll back.
+> container/snapshot you can roll back. (WSL was considered and rejected:
+> not installed, needs admin+reboot, and the desktop VM is required anyway
+> for drill 1.6.)
 
 **Environment:** Ubuntu 24.04 desktop VM (Hyprland or Wayland session) +
 Debian 13 trixie. On each:
@@ -130,27 +137,38 @@ rice doctor             # clean, exit 0
 
 ## Phase 2 — Release Hardening
 
-- [ ] **2.1 Version bump:** `rice/__init__.py` and `pyproject.toml`
-      0.1.0 → 1.0.0 (both files, keep `config.version` default in sync).
-- [ ] **2.2 CHANGELOG.md:** summarize 0.1.0→1.0.0: three review rounds,
-      restore-safety hoist (B1/B5/N1/N2), handler-level redaction (B2),
-      waybar manual-check semantics (B3), tilde-form config storage (B4/B6),
-      dead-API removals (-65 source lines net).
-- [ ] **2.3 README install section:** add `pipx install rice-cli` path
-      alongside dev checkout; verify documented commands all exist
-      (`rg -o 'rice [a-z-]+' README.md docs/` vs `rice --help`).
-- [ ] **2.4 Docs pass:** `docs/*.md` claims match reality (exit codes table,
-      snapshots layout without metadata.json, completion via
-      `--install-completion`).
-- [ ] **2.5 Packaging smoke:** `python -m build` (or `uv build`) produces
-      sdist+wheel; install wheel into a FRESH venv; `rice --version` works;
-      entry point `rice = "rice.cli:app"` functional.
-- [ ] **2.6 Final ponytail pass:** `/ponytail-audit` — expected verdict:
-      nothing to cut.
+**Status: DONE (owner-deferred item noted in 2.5).**
+
+- [x] **2.1 Version bump:** 0.1.0 → 1.0.0 in `rice/__init__.py`,
+      `pyproject.toml`, `RiceConfig.version` default, `load_config` default,
+      and the `docs/configuration.md` example.
+- [x] **2.2 CHANGELOG.md:** created; Fixed/Removed/Changed/Verification
+      sections reflect the actual three-round history.
+- [x] **2.3 README:** pipx install path added alongside source checkout.
+      Command audit found REAL drift: docs claimed a `rice version`
+      subcommand that never shipped (only `--version` flag exists, pinned by
+      CI test). Fixed README, REQUIREMENTS, spec §5 usage table,
+      docs/installation.md to match shipped behavior.
+- [x] **2.4 Docs pass:** suite-wide stale-claim grep clean
+      (metadata.json / changed_packages / `rice completion` / absolute-path
+      config examples all gone from living docs; historical archives
+      untouched deliberately).
+- [x] **2.5 Packaging smoke (build half):** `uv build` produces
+      sdist+wheel for rice_cli-1.0.0; all 23 modules present, tests
+      excluded, entry point declared. Also fixed setuptools' license-table
+      deprecation (SPDX string now; old form breaks builds 2027).
+      **DEFERRED to owner's Linux box:** fresh-venv wheel install +
+      `rice --version` (executing rice off-Linux is forbidden by CLAUDE.md) —
+      fold this into Phase 1 step 1.2.
+- [x] **2.6 Final ponytail pass:** `/ponytail-audit` verdict:
+      **"Lean already. Ship."** — net -0 lines, -0 deps.
 
 ---
 
 ## Phase 3 — Cut the Release
+
+> **Status: GATED on Phase 1.** The Definition of Done requires the manual
+> matrix green before tagging. Commands below are prepared, not executed.
 
 - [ ] **3.1 Tag:** `git tag -a v1.0.0 -m "rice v1.0.0"` && push tag.
 - [ ] **3.2 GitHub Release** with sdist+wheel attached and CHANGELOG body.
@@ -167,8 +185,10 @@ rice doctor             # clean, exit 0
 - [ ] CI green on the release tag (all five jobs).
 - [ ] Manual verification matrix (Phase 1) done on BOTH Ubuntu 24.04 and
       Debian 13.
-- [ ] Installable from artifact in a clean venv, offline of the repo checkout.
-- [ ] Zero open review findings; audit verdict "Lean already."
+- [ ] Installable from artifact in a clean venv, offline of the repo checkout
+      (owner's Linux box: `pip install dist/rice_cli-1.0.0-py3-none-any.whl`
+      in a fresh venv, then `rice --version`).
+- [x] Zero open review findings; audit verdict "Lean already."
 
 ## Standing Watchlist (known ceilings — do not "fix" casually)
 

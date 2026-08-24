@@ -31,7 +31,7 @@ pytest -q        # Linux only
 ## Verify
 
 ```bash
-rice version     # prints rice x.y.z
+rice --version    # prints rice x.y.z
 ```
 
 ## Shell completion (optional)

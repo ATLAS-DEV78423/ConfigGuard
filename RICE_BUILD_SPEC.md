@@ -44,7 +44,7 @@ is explicitly NOT a full-OS rollback tool (not Timeshift).
 | Package manager | APT/dpkg |
 | Desktop | Hyprland |
 | Config targets | Hyprland, Waybar, Kitty, Wofi/Rofi, + user-selected additional paths |
-| CLI | `rice init`, `status`, `snapshot`, `update`, `diff`, `restore`, `doctor`, `snapshots list/show/delete/prune`, `version` |
+| CLI | `rice init`, `status`, `snapshot`, `update`, `diff`, `restore`, `doctor`, `snapshots list/show/delete/prune`, `--version` |
 | Languages | Python 3.11+ |
 | Distribution | `pip install rice-cli`, `.deb` via setuptools |
 
@@ -70,11 +70,10 @@ rice snapshots list      List all snapshots
 rice snapshots show S    Show one snapshot's manifest
 rice snapshots delete S  Delete a snapshot
 rice snapshots prune     Prune per retention policy
-rice version             Print version and exit
 ```
 
-Global flags: `--version`, `-v/--verbose`, `--no-color`, `--quiet`, `--json`,
-`--non-interactive`, `--dry-run`.
+Global flags: `--version` (print version and exit), `-v/--verbose`,
+`--no-color`, `--quiet`, `--json`, `--non-interactive`, `--dry-run`.
 
 `restore`/`diff`/`snapshots show/delete` default to the most recent snapshot
 when `SNAPSHOT` is omitted (except `delete`/`restore` require explicit id in

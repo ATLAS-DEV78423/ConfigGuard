@@ -13,13 +13,25 @@ not a full-OS rollback tool.
 
 ## Status
 
-V1 under development. Targets Ubuntu 24.04+/Debian 13+ with APT and Hyprland
-desktops. See `RICE_BUILD_SPEC.md` for scope.
+v1.0.0. Targets Ubuntu 24.04+/Debian 13+ with APT and Hyprland desktops.
+See `RICE_BUILD_SPEC.md` for scope.
+
+## Install
+
+```bash
+pipx install rice-cli          # end users
+```
+
+From source:
+
+```bash
+git clone https://github.com/ATLAS-DEV78423/ConfigGuard && cd ConfigGuard
+pip install .                  # or: pip install -e .[dev]
+```
 
 ## Quick start
 
 ```bash
-pip install rice-cli      # once published
 rice init                 # discover + choose configs to protect
 rice status               # what is detected / protected / last snapshot
 rice update               # snapshot -> apt upgrade -> reconcile -> validate
@@ -29,8 +41,7 @@ rice restore              # restore latest snapshot manually
 ## Commands
 
 `init`, `status`, `snapshot [--pin]`, `update`, `diff [SNAPSHOT]`,
-`restore [SNAPSHOT]`, `doctor [--fix]`, `snapshots list|show|delete|prune`,
-`version`.
+`restore [SNAPSHOT]`, `doctor [--fix]`, `snapshots list|show|delete|prune`.
 
 Shell completion (bash/zsh/fish) is built in via Typer:
 `rice --install-completion` / `rice --show-completion bash`.

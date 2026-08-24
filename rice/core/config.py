@@ -26,7 +26,7 @@ class RiceConfig:
 
     data_dir: Path  # expanded, e.g. /home/u/.local/share/rice
     protected: dict[str, list[Path]]  # app name -> expanded absolute paths
-    version: str = "0.1.0"
+    version: str = "1.0.0"
 
 
 def config_path(home: Path | None = None) -> Path:
@@ -80,7 +80,7 @@ def load_config(fs: Filesystem, home: Path | None = None) -> RiceConfig:
     return RiceConfig(
         data_dir=data_dir,
         protected=protected,
-        version=str(rice_tbl.get("version", "0.1.0")),
+        version=str(rice_tbl.get("version", "1.0.0")),
     )
 
 

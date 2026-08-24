@@ -70,7 +70,7 @@ Rice MUST support `rice snapshots prune` enforcing the retention policy
 (last 10, last 30 days, pinned).
 
 **FR-017**  
-Rice MUST support `rice version` printing semantic version and exiting.
+Rice MUST support `rice --version` printing semantic version and exiting.
 
 **FR-018**  
 Rice MUST abort the update transaction if the APT command returns non-zero

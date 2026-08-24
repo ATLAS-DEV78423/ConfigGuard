@@ -5,7 +5,7 @@
 ```toml
 [rice]
 data_dir = "~/.local/share/rice"
-version = "0.1.0"
+version = "1.0.0"
 
 [protected]
 hyprland = ["~/.config/hypr"]
