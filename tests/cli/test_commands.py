@@ -28,12 +28,24 @@ def test_version_flag_prints_semver() -> None:
     assert result.output.split()[1].count(".") == 2
 
 
-def test_completion_bash_zsh_fish() -> None:
-    """FR-034: completion via Typer's built-in machinery (no custom command)."""
-    for shell in ("bash", "zsh", "fish"):
+def test_completion_bash_zsh_fish(monkeypatch: pytest.MonkeyPatch) -> None:
+    """FR-034: completion via Typer's built-in machinery (no custom command).
+
+    _TYPER_COMPLETE_TEST_DISABLE_SHELL_DETECTION is typer's own test seam:
+    without it the shell is auto-detected from the parent process, which
+    exits 1 inside CI containers (no parent shell -> Debian trixie job).
+    With it, --show-completion takes an explicit shell value.
+    """
+    monkeypatch.setenv("_TYPER_COMPLETE_TEST_DISABLE_SHELL_DETECTION", "1")
+    fragment = {
+        "bash": "complete -o default",
+        "zsh": "#compdef",
+        "fish": "complete --command",
+    }
+    for shell, marker in fragment.items():
         result = run("--show-completion", shell)
-        assert result.exit_code == 0
-        assert result.output.strip()
+        assert result.exit_code == 0, f"{shell}: {result.output}"
+        assert marker in result.output  # the RIGHT script, not just any output
 
 
 # ---- init / config gate --------------------------------------------------------
