@@ -26,7 +26,9 @@ def test_validate_all_only_detects_present_apps(tmp_path: Path) -> None:
     assert results[0].ok is None  # kitty: manual check needed
 
 
-def test_waybar_valid_json_ok_invalid_json_fails(tmp_path: Path) -> None:
+def test_waybar_valid_json_ok_invalid_json_is_manual_check(tmp_path: Path) -> None:
+    """B3 contract: strict-parse failure is NOT proof of a broken config
+    (the stripper is deliberately partial) -> ok=None, never ok=False."""
     home = tmp_path / "home"
     wb = home / ".config" / "waybar"
     wb.mkdir(parents=True)
@@ -36,8 +38,8 @@ def test_waybar_valid_json_ok_invalid_json_fails(tmp_path: Path) -> None:
 
     (wb / "config").write_text("{not json")
     bad = Validator(Filesystem(), FakeCommandRunner(), home).validate_all(["waybar"])
-    assert bad[0].ok is False
-    assert [r for r in bad if r.ok is False] == bad
+    assert bad[0].ok is None
+    assert "manual check needed" in bad[0].message
 
 
 def test_failures_filters_manual_checks_out(tmp_path: Path) -> None:
