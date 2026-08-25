@@ -116,7 +116,7 @@ class TransactionJournal:
 
     def record(self, key: str, value: Any) -> None:
         rec = self._require()
-        if key == "decisions" and isinstance(value, dict):
+        if key == "decisions":
             rec.decisions.append(value)
         elif hasattr(rec, key):
             setattr(rec, key, value)
