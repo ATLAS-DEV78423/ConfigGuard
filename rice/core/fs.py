@@ -25,7 +25,6 @@ from rice.core.errors import ScopeViolation
 class FileMeta:
     """Everything rice records about one path (spec §10)."""
 
-    path: str
     type: str  # "file" | "symlink" | "dir"
     mode: int
     uid: int
@@ -44,7 +43,6 @@ class FileMeta:
         else:
             kind = "file"
         return cls(
-            path=str(path),
             type=kind,
             mode=stat.S_IMODE(st.st_mode),
             uid=st.st_uid,

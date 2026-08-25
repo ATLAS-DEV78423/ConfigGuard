@@ -49,7 +49,7 @@ class AptPackageManager(PackageManager):
             return self._failure(r1)
 
         r2 = runner.privileged([*_ENV, "apt", "upgrade", "-y"], timeout=None)
-        return self._success(r2) if r2.ok else self._failure(r2, prior_stdout=r1.stdout)
+        return self._success(r2) if r2.ok else self._failure(r2)
 
     # -- internals ----------------------------------------------------------
 
@@ -59,16 +59,14 @@ class AptPackageManager(PackageManager):
             success=True,
             exit_code=r.returncode,
             upgraded=sorted(set(_SETUP_RE.findall(r.stdout))),
-            stdout_tail=tail(r.stdout),
             stderr_tail=tail(r.stderr),
         )
 
     @staticmethod
-    def _failure(r: RunResult, prior_stdout: str = "") -> UpdateResult:
+    def _failure(r: RunResult) -> UpdateResult:
         return UpdateResult(
             success=False,
             exit_code=r.returncode,
-            stdout_tail=tail(prior_stdout + r.stdout),
             stderr_tail=tail(r.stderr),
         )
 

@@ -81,7 +81,6 @@ def main(
         help="Print version and exit.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Debug output."),
-    no_color: bool = typer.Option(False, "--no-color", help="Disable colored output."),
     quiet: bool = typer.Option(False, "--quiet", help="Warnings/errors only."),
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
     non_interactive: bool = typer.Option(

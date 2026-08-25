@@ -20,7 +20,6 @@ from rice.core.fs import Filesystem, require_within
 
 
 class TransactionState(enum.StrEnum):
-    IDLE = "IDLE"
     PREPARING = "PREPARING"
     SNAPSHOTTED = "SNAPSHOTTED"
     UPDATING = "UPDATING"
@@ -37,7 +36,6 @@ class TransactionState(enum.StrEnum):
 # Exactly the edges of the spec §17 diagram. Terminal states have no outgoing
 # edges; failure states route through RECOVERY -> KNOWN_STATE.
 ALLOWED: dict[TransactionState, frozenset[TransactionState]] = {
-    TransactionState.IDLE: frozenset({TransactionState.PREPARING}),
     TransactionState.PREPARING: frozenset({TransactionState.SNAPSHOTTED}),
     TransactionState.SNAPSHOTTED: frozenset({TransactionState.UPDATING}),
     TransactionState.UPDATING: frozenset(
@@ -67,7 +65,7 @@ class TransactionRecord:
     """Persisted per-transaction record (spec §10)."""
 
     txn_id: str
-    state: TransactionState = TransactionState.IDLE
+    state: TransactionState
     started_at: str = field(default_factory=_now)
     updated_at: str = field(default_factory=_now)
     snapshot_id: str | None = None
@@ -83,7 +81,7 @@ class TransactionRecord:
     @classmethod
     def from_json(cls, raw: dict[str, Any]) -> TransactionRecord:
         raw = dict(raw)
-        raw["state"] = TransactionState(raw.get("state", "IDLE"))
+        raw["state"] = TransactionState(raw["state"])  # missing/unknown state -> corrupt -> skipped
         return cls(**raw)
 
 

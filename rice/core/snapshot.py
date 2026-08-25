@@ -123,35 +123,33 @@ class SnapshotStore:
             pinned=pinned,
         )
 
+        entries = []
+        for src in sorted(sources):
+            rel = src.relative_to(self.home).as_posix()
+            entries.append(
+                ManifestEntry(rel_path=rel, meta=sources[src], backup_rel_path=f"files/{rel}")
+            )
+        manifest.files = entries
+
         if dry_run:
             # Report exactly what would be captured, without touching disk.
-            manifest.files = [
-                ManifestEntry(
-                    rel_path=src.relative_to(self.home).as_posix(),
-                    meta=sources[src],
-                    backup_rel_path=f"files/{src.relative_to(self.home).as_posix()}",
-                )
-                for src in sorted(sources)
-            ]
             return manifest
 
         dest_dir = self._dir_for(snap_id)
         self._fs.ensure_dir(dest_dir / "files")
-        for src in sorted(sources):
-            meta = sources[src]
-            rel = src.relative_to(self.home).as_posix()
-            backup_rel = f"files/{rel}"
-            target = dest_dir / backup_rel
-            if meta.type == "symlink":
+        for i, src in enumerate(sorted(sources)):
+            entry = entries[i]
+            target = dest_dir / entry.backup_rel_path
+            if entry.meta.type == "symlink":
                 target.parent.mkdir(parents=True, exist_ok=True)
-                self._fs.symlink(meta.symlink_target or "", target)
+                self._fs.symlink(entry.meta.symlink_target or "", target)
             else:
                 self._fs.copy(src, target)
             # re-hash source AFTER copy for manifest truth
-            meta = replace(meta, sha256=self._fs.sha256(src) if meta.type == "file" else None)
-            manifest.files.append(
-                ManifestEntry(rel_path=rel, meta=meta, backup_rel_path=backup_rel)
-            )
+            meta = entry.meta
+            if meta.type == "file":
+                meta = replace(meta, sha256=self._fs.sha256(src))
+            manifest.files[i] = replace(entry, meta=meta)
         self.write_manifest(dest_dir, manifest)
         self.verify(snap_id)  # FR-001/002: no update proceeds on unverified snapshot
         log.info(
@@ -277,10 +275,12 @@ class SnapshotStore:
         return out
 
     def get(self, snap_id: str) -> SnapshotManifest:
-        for m in self.list_all():
-            if m.timestamp == snap_id:
-                return m
-        raise SnapshotError(f"unknown snapshot: {snap_id}")
+        d = self._dir_for(snap_id)
+        try:
+            raw = self._fs.read(d / "manifest.json")
+        except OSError as exc:
+            raise SnapshotError(f"unknown snapshot: {snap_id}") from exc
+        return SnapshotManifest.from_json(json.loads(raw))
 
     def latest(self) -> SnapshotManifest | None:
         snaps = self.list_all()

@@ -247,7 +247,7 @@ Rice MUST allow user-selected additional paths beyond detected apps.
 Rice MUST work in plain terminals (no color requirement).
 
 **UR-002**  
-Rice MUST support `--no-color` to disable colored output.
+Dropped pre-release: `--no-color` removed because rice never emits colored output (UR-001 applies).
 
 **UR-003**  
 Rice MUST support `--quiet` (warnings/errors only).

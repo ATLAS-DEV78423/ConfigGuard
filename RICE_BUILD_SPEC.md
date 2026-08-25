@@ -73,7 +73,8 @@ rice snapshots prune     Prune per retention policy
 ```
 
 Global flags: `--version` (print version and exit), `-v/--verbose`,
-`--no-color`, `--quiet`, `--json`, `--non-interactive`, `--dry-run`.
+`--quiet`, `--json`, `--non-interactive`, `--dry-run`. (`--no-color` was
+dropped pre-release: rice never emits colored output.)
 
 `restore`/`diff`/`snapshots show/delete` default to the most recent snapshot
 when `SNAPSHOT` is omitted (except `delete`/`restore` require explicit id in
@@ -198,7 +199,7 @@ class CommandRunner:
 
 # core/state.py
 class TransactionState(Enum):
-    IDLE, PREPARING, SNAPSHOTTED, UPDATING, UPDATED,
+    PREPARING, SNAPSHOTTED, UPDATING, UPDATED,
     RECONCILING, CONFLICT, VALIDATING, COMMITTED,
     UPDATE_FAILED, RECOVERY, KNOWN_STATE
 class TransactionJournal:
@@ -223,11 +224,12 @@ class DesktopIntegrator(ABC):
 
 ## 10. Data Models
 
-- `FileMeta`: path, type (file/symlink/dir), mode, uid, gid, size, mtime,
+- `FileMeta`: type (file/symlink/dir), mode, uid, gid, size, mtime,
   sha256, symlink_target (optional).
 - `ManifestEntry`: relative_path, FileMeta, backup_rel_path.
 - `SnapshotManifest`: timestamp, host, desktop, packages_upgraded, files[].
-- `UpdateResult`: success, exit_code, upgraded[], stdout_tail, stderr_tail.
+- `UpdateResult`: success, exit_code, upgraded[], stderr_tail. (`stdout_tail`
+  dropped pre-release: populated but never read.)
 - `ValidationResult`: app, ok, message.
 - `TransactionRecord`: txn_id, state, started_at, snapshot_id, packages, steps[].
 
@@ -261,7 +263,6 @@ and whether the target is within protected scope.
 ```toml
 [rice]
 data_dir = "~/.local/share/rice"
-version = "0.1.0"
 
 [protected]
 # Each entry maps an integrator/app to its discovered paths.
@@ -314,9 +315,6 @@ orchestrates APT; it does NOT try to outsmart it.
 ## 17. Update Transaction State Machine
 
 ```
-IDLE
- │
- ▼
 PREPARING
  │
  ▼

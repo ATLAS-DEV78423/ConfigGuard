@@ -47,7 +47,7 @@ Shell completion (bash/zsh/fish) is built in via Typer:
 `rice --install-completion` / `rice --show-completion bash`.
 
 Global flags (place immediately after `rice`): `--version`, `-v/--verbose`,
-`--no-color`, `--quiet`, `--json`,
+`--quiet`, `--json`,
 `--non-interactive`, `--dry-run`.
 
 Exit codes: 0 success · 1 general · 2 usage · 3 config · 4 snapshot ·

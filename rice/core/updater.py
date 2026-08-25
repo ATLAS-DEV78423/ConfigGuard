@@ -38,9 +38,6 @@ from rice.pkgmanagers.apt import AptPackageManager, looks_like_sudo_failure
 
 log = logging.getLogger("rice.update")
 
-# Test seam: CLI tests point this at a scripted FakeCommandRunner script.
-_TEST_SCRIPT = None
-
 
 def _keep_mine(_finding: Finding) -> Action:
     """Conservative default resolution (spec §18): preserve the user's file."""
@@ -118,11 +115,7 @@ def signal_safety() -> Iterator[None]:
 # ---- preflight -----------------------------------------------------------------
 
 
-def preflight(
-    det: Detector,
-    cfg: RiceConfig | None,
-    pm_present: bool,
-) -> list[str]:
+def preflight(det: Detector, cfg: RiceConfig, pm_present: bool) -> list[str]:
     """Return problems; empty list == good to proceed."""
     problems: list[str] = []
     detection = det.system()
@@ -130,15 +123,12 @@ def preflight(
         problems.append(
             f"unsupported distro '{detection.distro_id}': V1 targets Ubuntu 24.04+/Debian 13+"
         )
-    if cfg is None:
-        problems.append("no rice configuration; run 'rice init'")
-    else:
-        roots = protected_paths(cfg)
-        missing = [p for p in roots if not p.exists()]
-        if roots and len(missing) == len(roots):
-            problems.append("none of the protected paths exist")
-        elif missing:
-            log.warning("%d protected path(s) missing and will be skipped", len(missing))
+    roots = protected_paths(cfg)
+    missing = [p for p in roots if not p.exists()]
+    if roots and len(missing) == len(roots):
+        problems.append("none of the protected paths exist")
+    elif missing:
+        log.warning("%d protected path(s) missing and will be skipped", len(missing))
     if not pm_present:
         problems.append("apt not found on this system")
     return problems

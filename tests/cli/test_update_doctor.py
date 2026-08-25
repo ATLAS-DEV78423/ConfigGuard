@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from collections.abc import Callable
 from datetime import UTC
 from pathlib import Path
@@ -12,11 +13,13 @@ from support import FakeCommandRunner
 from typer.testing import CliRunner
 
 import rice.cli as cli_mod
-import rice.core.updater as updater_mod
 from rice.cli import app
 from rice.core.runner import RunResult
 
 runner = CliRunner()
+
+# Scripted apt/hyprctl responses handed to FakeCommandRunner by the factory below.
+_TEST_SCRIPT: Callable[[list[str]], RunResult] | None = None
 
 
 @pytest.fixture()
@@ -32,8 +35,7 @@ def rice_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(cli_mod, "_HOME_OVERRIDE", home)
 
     def fake_runner_factory() -> FakeCommandRunner:
-        script = getattr(updater_mod, "_TEST_SCRIPT", None)
-        return FakeCommandRunner(script=script)
+        return FakeCommandRunner(script=_TEST_SCRIPT)
 
     monkeypatch.setattr(cli_mod, "CommandRunner", fake_runner_factory)
     assert runner.invoke(app, ["--non-interactive", "init"], catch_exceptions=False).exit_code == 0
@@ -68,7 +70,7 @@ def apt_script(
 def test_update_success_via_cli(rice_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     conf = rice_home / ".config/hypr/hyprland.conf"
     monkeypatch.setattr(
-        updater_mod,
+        sys.modules[__name__],
         "_TEST_SCRIPT",
         apt_script(on_upgrade=lambda: conf.write_text("monitor=@165\n")),
     )
@@ -81,7 +83,7 @@ def test_update_success_via_cli(rice_home: Path, monkeypatch: pytest.MonkeyPatch
 def test_update_dry_run_touches_nothing(rice_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     called = []
     monkeypatch.setattr(
-        updater_mod,
+        sys.modules[__name__],
         "_TEST_SCRIPT",
         apt_script(on_upgrade=lambda: called.append(1)),
     )
@@ -92,7 +94,7 @@ def test_update_dry_run_touches_nothing(rice_home: Path, monkeypatch: pytest.Mon
 
 def test_update_apt_failure_exit_5(rice_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        updater_mod,
+        sys.modules[__name__],
         "_TEST_SCRIPT",
         apt_script(upgrade_rc=100, upgrade_stderr="E: broken"),
     )
@@ -103,7 +105,7 @@ def test_update_apt_failure_exit_5(rice_home: Path, monkeypatch: pytest.MonkeyPa
 def test_update_validation_failure_exit_7(rice_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     conf = rice_home / ".config/hypr/hyprland.conf"
     monkeypatch.setattr(
-        updater_mod,
+        sys.modules[__name__],
         "_TEST_SCRIPT",
         apt_script(
             on_upgrade=lambda: conf.write_text("monitor=@165\n"),

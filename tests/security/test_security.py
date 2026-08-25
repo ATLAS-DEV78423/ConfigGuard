@@ -45,7 +45,6 @@ def test_sr005_tampered_backup_refused_on_restore(store_env: tuple) -> None:
 def test_sr003_restore_entry_refuses_paths_outside_home(store_env: tuple) -> None:
     store, fs, home = store_env
     evil_meta = FileMeta(
-        path="/etc/passwd",
         type="file",
         mode=0o644,
         uid=0,
@@ -64,7 +63,6 @@ def test_sr004_symlink_target_escape_refused_at_restore(store_env: tuple) -> Non
     """A manifest entry whose symlink target escapes home is skipped, not followed."""
     store, fs, home = store_env
     link_meta = FileMeta(
-        path="x",
         type="symlink",
         mode=0o777,
         uid=0,

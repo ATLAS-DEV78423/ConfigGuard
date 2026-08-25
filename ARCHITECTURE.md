@@ -32,7 +32,7 @@ integrators/
 
 - **Two seams:** every external effect flows through `Filesystem` or
   `CommandRunner`; tests substitute fakes at exactly those points.
-- **State machine** (spec §17): IDLE -> PREPARING -> SNAPSHOTTED -> UPDATING ->
+- **State machine** (spec §17): PREPARING -> SNAPSHOTTED -> UPDATING ->
   UPDATED -> RECONCILING -> VALIDATING -> COMMITTED; failures route to
   UPDATE_FAILED / CONFLICT / RECOVERY -> KNOWN_STATE. Every transition is
   persisted to `transactions/<txn>.json` before acting on it.

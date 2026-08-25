@@ -18,7 +18,6 @@ class UpdateResult:
     success: bool
     exit_code: int
     upgraded: list[str] = field(default_factory=list)
-    stdout_tail: str = ""
     stderr_tail: str = ""
 
 
