@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rice-cli"
 version = "1.0.0"
-description = "Protect your Linux desktop rice during system updates"
+description = "Protect your Linux desktop rice during system updates. Supports Ubuntu 24.04+, Debian 13+, Hyprland desktops with APT/dpkg"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
